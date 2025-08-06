@@ -86,7 +86,7 @@ export default function Home() {
             Contract Revenue Processor
           </h1>
           <p className="text-gray-600 mb-6">
-            Upload contracts to automatically extract revenue terms and milestones using AI
+            Upload contracts to automatically extract revenue terms and milestones using enhanced AI
           </p>
           
           {/* AI Toggle */}
