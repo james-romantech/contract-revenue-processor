@@ -5,23 +5,38 @@ export async function extractTextFromFile(file: File): Promise<string> {
   
   if (file.type === 'application/pdf') {
     try {
-      console.log('Processing PDF document with pdf-parse...')
+      console.log('Processing PDF document with PDF.js...')
       console.log('Buffer length:', buffer.length)
       
       // Dynamic import to avoid build issues
-      const pdf = await import('pdf-parse')
-      const pdfParser = pdf.default || pdf
+      const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs')
       
-      const pdfData = await pdfParser(buffer, {
-        // Optimize for contract parsing
-        normalizeWhitespace: true,
-        disableCombineTextItems: false
+      // Configure PDF.js worker
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/legacy/build/pdf.worker.min.mjs`
+      
+      const loadingTask = pdfjsLib.getDocument({
+        data: new Uint8Array(buffer),
+        verbosity: 0 // Reduce console noise
       })
       
-      console.log('PDF extraction successful, text length:', pdfData.text.length)
-      console.log('PDF metadata:', pdfData.info)
+      const pdf = await loadingTask.promise
+      console.log('PDF loaded, pages:', pdf.numPages)
       
-      if (pdfData.text.trim().length === 0) {
+      let fullText = ''
+      
+      // Extract text from all pages
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum)
+        const textContent = await page.getTextContent()
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ')
+        fullText += pageText + '\n'
+      }
+      
+      console.log('PDF extraction successful, text length:', fullText.length)
+      
+      if (fullText.trim().length === 0) {
         return `PDF file uploaded: ${file.name}
 
 This PDF appears to contain no extractable text (possibly scanned images).
@@ -31,11 +46,11 @@ Please try:
 3. Using manual entry for contract details
 
 File size: ${(file.size / 1024).toFixed(1)} KB
-Pages: ${pdfData.numpages}
+Pages: ${pdf.numPages}
 Upload date: ${new Date().toLocaleDateString()}`
       }
       
-      return pdfData.text
+      return fullText.trim()
       
     } catch (error) {
       console.error('PDF parsing error:', error)
