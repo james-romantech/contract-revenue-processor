@@ -7,23 +7,90 @@ export async function extractTextFromFile(file: File): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer())
   
   if (file.type === 'application/pdf') {
-    // For now, let's focus on getting AI extraction working first
-    // PDF processing has serverless compatibility issues that need more work
-    console.log('PDF file detected, using placeholder for now...')
-    
-    return `PDF file uploaded: ${file.name}
+    try {
+      console.log('Processing PDF document with pdf2json...')
+      console.log('Buffer length:', buffer.length)
+      
+      // Dynamic import to avoid build issues
+      const PDFParser = await import('pdf2json')
+      const PDFParserClass = PDFParser.default || PDFParser
+      
+      return new Promise((resolve, reject) => {
+        const pdfParser = new PDFParserClass(null, 1)
+        
+        pdfParser.on('pdfParser_dataError', (errData: any) => {
+          console.error('PDF parsing error:', errData)
+          reject(new Error(`PDF parsing failed: ${errData.parserError}`))
+        })
+        
+        pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
+          try {
+            console.log('PDF parsed successfully, extracting text...')
+            
+            let fullText = ''
+            
+            if (pdfData.Pages && pdfData.Pages.length > 0) {
+              pdfData.Pages.forEach((page: any, pageIndex: number) => {
+                if (page.Texts && page.Texts.length > 0) {
+                  const pageText = page.Texts
+                    .map((text: any) => {
+                      if (text.R && text.R.length > 0) {
+                        return text.R.map((run: any) => decodeURIComponent(run.T)).join('')
+                      }
+                      return ''
+                    })
+                    .join(' ')
+                  fullText += pageText + '\n'
+                }
+              })
+            }
+            
+            console.log('PDF text extraction completed, text length:', fullText.length)
+            
+            if (fullText.trim().length === 0) {
+              resolve(`PDF file uploaded: ${file.name}
 
-This is a PDF document. Currently, for best AI extraction results, please:
+This PDF appears to contain no extractable text (likely a scanned document).
+For scanned PDFs, please:
 
-1. Convert to a Word document (.docx) and re-upload
-2. Or copy/paste the contract text into a Word document
+1. Convert to a searchable PDF with OCR
+2. Convert to a Word document (.docx)
+3. Copy and paste the contract text manually
 
-PDF processing with OCR is being improved and will be available soon.
+File size: ${(file.size / 1024).toFixed(1)} KB
+Upload date: ${new Date().toLocaleDateString()}`)
+            } else {
+              resolve(fullText.trim())
+            }
+          } catch (parseError) {
+            console.error('Error processing PDF data:', parseError)
+            reject(parseError)
+          }
+        })
+        
+        // Parse the PDF buffer
+        pdfParser.parseBuffer(buffer)
+      })
+      
+    } catch (error) {
+      console.error('PDF processing failed:', error)
+      return `PDF file uploaded: ${file.name}
+
+PDF processing failed. This can happen with:
+1. Password-protected PDFs
+2. Corrupted or complex PDF layouts  
+3. Scanned PDFs without text content
+
+For best AI extraction results, please:
+1. Convert to a Word document (.docx)
+2. Ensure PDF is not password-protected
+3. Use a text-based (not scanned) PDF
 
 File size: ${(file.size / 1024).toFixed(1)} KB
 Upload date: ${new Date().toLocaleDateString()}
 
-Note: You can still proceed with AI extraction - the system will do its best to analyze the available information.`
+Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+    }
   }
   
   if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
