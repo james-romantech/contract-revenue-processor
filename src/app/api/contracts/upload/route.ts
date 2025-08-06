@@ -5,16 +5,23 @@ import { extractContractDataWithAI, validateExtractedData } from '@/lib/ai-extra
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('Upload API called')
+    
     const formData = await request.formData()
     const file = formData.get('file') as File
     const useAI = formData.get('useAI') === 'true'
     
+    console.log('File:', file?.name, 'Size:', file?.size, 'Type:', file?.type)
+    
     if (!file) {
+      console.log('No file provided')
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
     // Extract text from the file
+    console.log('Extracting text from file...')
     const extractedText = await extractTextFromFile(file)
+    console.log('Extracted text length:', extractedText.length)
     
     let contractData
     let validation = { isValid: true, errors: [], warnings: [] }
@@ -74,18 +81,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Fallback to basic pattern matching extraction
+    console.log('Using basic extraction...')
     const basicInfo = extractBasicContractInfo(extractedText)
     
-    contractData = await prisma.contract.create({
-      data: {
-        filename: file.name,
-        originalText: extractedText,
-        status: 'completed',
-        contractValue: basicInfo.amounts.length > 0 
-          ? parseFloat(basicInfo.amounts[0].replace(/[$,]/g, ''))
-          : null,
-      }
-    })
+    console.log('Attempting database save...')
+    try {
+      contractData = await prisma.contract.create({
+        data: {
+          filename: file.name,
+          originalText: extractedText,
+          status: 'completed',
+          contractValue: basicInfo.amounts.length > 0 
+            ? parseFloat(basicInfo.amounts[0].replace(/[$,]/g, ''))
+            : null,
+        }
+      })
+      console.log('Database save successful:', contractData.id)
+    } catch (dbError) {
+      console.error('Database error:', dbError)
+      throw new Error(`Database save failed: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`)
+    }
 
     return NextResponse.json({
       success: true,
