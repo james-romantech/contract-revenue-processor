@@ -56,6 +56,7 @@ export default function Home() {
     setContractData(null)
 
     try {
+      console.log('Uploading with AI extraction:', useAI)
       const formData = new FormData()
       formData.append('file', file)
       formData.append('useAI', useAI.toString())

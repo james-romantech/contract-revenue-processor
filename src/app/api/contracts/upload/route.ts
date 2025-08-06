@@ -123,8 +123,12 @@ export async function POST(request: NextRequest) {
         console.error('AI Error details:', {
           message: aiError instanceof Error ? aiError.message : 'Unknown error',
           name: aiError instanceof Error ? aiError.name : 'Unknown',
-          stack: aiError instanceof Error ? aiError.stack : 'No stack'
+          stack: aiError instanceof Error ? aiError.stack : 'No stack',
+          extractedTextPreview: extractedText.substring(0, 100)
         })
+        
+        // Store the error for debugging
+        validation.warnings.push(`AI extraction failed: ${aiError instanceof Error ? aiError.message : 'Unknown error'}`)
         // Fall through to basic extraction
       }
     } else {
