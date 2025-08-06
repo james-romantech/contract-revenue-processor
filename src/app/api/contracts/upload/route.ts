@@ -123,51 +123,52 @@ export async function POST(request: NextRequest) {
         isNotPlaceholder: openaiKey !== 'your-openai-api-key-here'
       })
     }
-    }
 
-    // Fallback to basic pattern matching extraction
-    console.log('Using basic extraction...')
-    const basicInfo = extractBasicContractInfo(extractedText)
-    
-    console.log('Attempting database save...')
-    try {
-      contractData = await prisma.contract.create({
-        data: {
-          filename: file.name,
-          originalText: extractedText,
-          status: 'completed',
-          contractValue: basicInfo.amounts.length > 0 
-            ? parseFloat(basicInfo.amounts[0].replace(/[$,]/g, ''))
-            : null,
+    // Fallback to basic pattern matching extraction if AI wasn't used
+    if (!contractData) {
+      console.log('Using basic extraction...')
+      const basicInfo = extractBasicContractInfo(extractedText)
+      
+      console.log('Attempting database save...')
+      try {
+        contractData = await prisma.contract.create({
+          data: {
+            filename: file.name,
+            originalText: extractedText,
+            status: 'completed',
+            contractValue: basicInfo.amounts.length > 0 
+              ? parseFloat(basicInfo.amounts[0].replace(/[$,]/g, ''))
+              : null,
+          }
+        })
+        console.log('Database save successful:', contractData.id)
+      } catch (dbError) {
+        console.error('Database error:', dbError)
+        throw new Error(`Database save failed: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`)
+      }
+
+      return NextResponse.json({
+        success: true,
+        contract: {
+          id: contractData.id,
+          filename: contractData.filename,
+          status: contractData.status,
+          contractValue: contractData.contractValue,
+          extractedInfo: basicInfo,
+          aiExtractedData: null,
+          validation: { isValid: true, errors: [], warnings: ['AI extraction not available - using basic pattern matching'] }
+        },
+        debug: {
+          usedAI: false,
+          textLength: extractedText.length,
+          aiConditions: {
+            useAI,
+            hasOpenAIKey: !!openaiKey,
+            keyNotPlaceholder: openaiKey !== 'your-openai-api-key-here'
+          }
         }
       })
-      console.log('Database save successful:', contractData.id)
-    } catch (dbError) {
-      console.error('Database error:', dbError)
-      throw new Error(`Database save failed: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`)
     }
-
-    return NextResponse.json({
-      success: true,
-      contract: {
-        id: contractData.id,
-        filename: contractData.filename,
-        status: contractData.status,
-        contractValue: contractData.contractValue,
-        extractedInfo: basicInfo,
-        aiExtractedData: null,
-        validation: { isValid: true, errors: [], warnings: ['AI extraction not available - using basic pattern matching'] }
-      },
-      debug: {
-        usedAI: false,
-        textLength: extractedText.length,
-        aiConditions: {
-          useAI,
-          hasOpenAIKey: !!openaiKey,
-          keyNotPlaceholder: openaiKey !== 'your-openai-api-key-here'
-        }
-      }
-    })
     
   } catch (error) {
     console.error('Upload error:', error)
