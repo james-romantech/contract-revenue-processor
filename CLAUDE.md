@@ -214,3 +214,135 @@ GOOGLE_APPLICATION_CREDENTIALS_JSON='{"type": "service_account", ...}'
 3. **Test full end-to-end workflow** with scanned contracts
 4. **Enhance UI** to better display extracted contract data
 5. **Consider additional features** based on user feedback
+
+## Latest Session Updates (After Domain Setup)
+
+### Custom Domain Deployment
+- **Domain Purchased**: contractsync.ai
+- **Deployment Status**: Successfully deployed to custom domain
+- **Branding Updated**: Changed from "Contract Revenue Processor" to "ContractSync AI"
+- **URL**: Now live at https://contractsync.ai/
+
+### Critical Issue Identified: Inconsistent AI Extraction
+
+#### The Problem:
+- **Word Documents**: ✅ AI extraction works perfectly every time
+- **PDFs**: ❌ Fall back to basic pattern matching (no AI extraction)
+- **Root Cause**: Serverless environment issues with PDF processing
+
+#### Why It Happens:
+1. **Serverless Cold Starts**: Functions sleep after ~15 minutes, causing inconsistent behavior
+2. **Environment Variable Issues**: OpenAI key sometimes not available during cold starts
+3. **PDF Processing Failures**: 
+   - pdf2json times out on complex/scanned PDFs
+   - Scanned PDFs return no extractable text
+   - Placeholder text sent to AI instead of actual content
+
+#### Solutions Implemented:
+1. **Enhanced Debugging**: Added comprehensive logging to identify issues
+2. **Timeout Protection**: Added 9-second timeout for PDF processing (Vercel limit is 10s)
+3. **Better Error Handling**: Graceful fallbacks with helpful user messages
+4. **Debug Endpoints**: 
+   - `/api/test-openai-key` - Verify OpenAI API connectivity
+   - `/api/debug` - Check system status and environment variables
+
+### Google Cloud Vision OCR Implementation
+
+#### Setup Attempted:
+1. Created Google Cloud project
+2. Enabled Vision API
+3. Created service account with Editor role
+4. **BLOCKED**: Organization policy prevents service account key creation
+   - Error: `iam.disableServiceAccountKeyCreation`
+   - Common in enterprise/managed Google accounts
+
+#### Code Implementation Complete:
+- Google Vision API integration fully coded
+- Simplified to use Vision's native PDF processing (no image conversion needed)
+- Processes first 5 pages for optimal speed/cost
+- Environment variable configuration ready: `GOOGLE_APPLICATION_CREDENTIALS_JSON`
+
+#### Alternative Solutions for OCR:
+1. **Use Personal Google Account**: No organization restrictions
+2. **AWS Textract**: Alternative OCR service without restrictions
+3. **Azure Computer Vision**: Another enterprise-friendly option
+4. **Continue with Word Documents**: Currently 100% reliable
+
+### Current Production Status
+
+#### What Works Perfectly:
+- ✅ **Word Documents (.docx)**: Full AI extraction with implicit language understanding
+- ✅ **Enhanced AI Capabilities**: Handles complex contract language
+- ✅ **Custom Domain**: Live at contractsync.ai
+- ✅ **OpenAI Integration**: API key verified and working
+
+#### What Needs Resolution:
+- ⚠️ **Text-based PDFs**: Sometimes work, sometimes timeout
+- ❌ **Scanned PDFs**: Need OCR service (Google Vision blocked by org policy)
+- ⚠️ **Serverless Reliability**: Cold starts cause inconsistent behavior
+
+### Recommended Path Forward
+
+#### Option 1: Focus on Word Documents (Immediate)
+- Market as "Word Document Contract Processor"
+- 100% reliable, no serverless issues
+- All AI features work perfectly
+- Users can convert PDFs to Word
+
+#### Option 2: Set Up Alternative OCR (Short-term)
+- Use personal Google account for Vision API
+- Or implement AWS Textract ($1.50 per 1000 pages)
+- Or use Azure Computer Vision
+
+#### Option 3: Move Away from Serverless (Long-term)
+- Deploy to dedicated server (DigitalOcean, AWS EC2)
+- Eliminates timeout and cold start issues
+- Allows local OCR processing
+- More reliable for production use
+
+### Technical Debt and Issues
+
+1. **Serverless Limitations**:
+   - 10-second timeout on Vercel free tier
+   - Cold starts affect reliability
+   - Binary dependencies don't work (Canvas, native modules)
+   - Memory limitations for large files
+
+2. **PDF Processing Challenges**:
+   - pdf2json fails on complex PDFs
+   - No reliable serverless OCR solution without cloud APIs
+   - Scanned PDFs require external services
+
+3. **Environment Variable Management**:
+   - Sometimes not available during cold starts
+   - Need to handle both OPENAI_KEY and OPENAI_API_KEY
+   - Google Cloud credentials require JSON parsing
+
+### Key Learnings
+
+1. **Serverless is Great For**:
+   - Simple, stateless operations
+   - Quick deployments
+   - Cost-effective hosting
+   - Automatic scaling
+
+2. **Serverless Struggles With**:
+   - Heavy processing (OCR, PDF manipulation)
+   - Binary dependencies
+   - Long-running operations
+   - Consistent performance
+
+3. **Best Practices Discovered**:
+   - Always add timeouts to prevent hanging
+   - Use dynamic imports for heavy libraries
+   - Implement comprehensive error handling
+   - Provide clear fallback messages
+   - Test with both cold and warm starts
+
+### Session Code Statistics
+- **Total Commits**: ~30
+- **Files Modified**: 15+
+- **Features Added**: OCR, enhanced AI, custom domain, debugging tools
+- **Libraries Tested**: pdf-parse, pdfjs-dist, pdf2json, tesseract.js, pdf-poppler, sharp, @google-cloud/vision
+- **Libraries That Work in Serverless**: pdf2json, mammoth, openai
+- **Libraries That Don't Work**: pdf-parse, tesseract.js, canvas-dependent libraries
