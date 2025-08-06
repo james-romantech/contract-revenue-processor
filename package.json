@@ -10,7 +10,8 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
-    "@google-cloud/vision": "^5.3.3",
+    "@aws-sdk/client-s3": "^3.862.0",
+    "@aws-sdk/client-textract": "^3.862.0",
     "@prisma/client": "^6.13.0",
     "@radix-ui/react-dialog": "^1.1.14",
     "class-variance-authority": "^0.7.1",

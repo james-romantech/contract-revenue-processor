@@ -1,71 +1,84 @@
 import mammoth from 'mammoth'
 
-// OCR function for scanned PDFs using Google Cloud Vision API
-async function performOCRWithGoogleVision(buffer: Buffer): Promise<string> {
+// OCR function for scanned PDFs using AWS Textract
+async function performOCRWithTextract(buffer: Buffer): Promise<string> {
   try {
-    console.log('Starting OCR with Google Cloud Vision API...')
+    console.log('Starting OCR with AWS Textract...')
     
     // Dynamic imports for serverless compatibility
-    const vision = await import('@google-cloud/vision')
+    const { TextractClient, AnalyzeDocumentCommand } = await import('@aws-sdk/client-textract')
     
-    // Get credentials from environment variable
-    const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
-    if (!credentialsJson) {
-      throw new Error('Google Cloud Vision credentials not configured')
+    // Check for AWS credentials
+    const accessKeyId = process.env.AWS_ACCESS_KEY_ID
+    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY
+    const region = process.env.AWS_REGION || 'us-east-1'
+    
+    if (!accessKeyId || !secretAccessKey) {
+      throw new Error('AWS credentials not configured (AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY required)')
     }
     
-    let credentials
-    try {
-      credentials = JSON.parse(credentialsJson)
-    } catch (e) {
-      throw new Error('Invalid Google Cloud Vision credentials format')
-    }
-    
-    const client = new vision.ImageAnnotatorClient({
-      credentials: credentials
+    // Create Textract client
+    const client = new TextractClient({
+      region,
+      credentials: {
+        accessKeyId,
+        secretAccessKey
+      }
     })
     
-    // Google Vision can process PDFs directly!
-    console.log('Processing PDF with Google Cloud Vision...')
+    console.log('Sending document to AWS Textract...')
     
-    // Vision API can handle PDFs up to 20MB and 2000 pages
-    const request = {
-      requests: [{
-        inputConfig: {
-          content: buffer,
-          mimeType: 'application/pdf'
-        },
-        features: [{
-          type: 'DOCUMENT_TEXT_DETECTION',
-          maxResults: 50
-        }],
-        pages: [1, 2, 3, 4, 5] // Process first 5 pages for speed
-      }]
-    }
+    // Textract can process PDFs directly (up to 5MB synchronously)
+    const command = new AnalyzeDocumentCommand({
+      Document: {
+        Bytes: buffer
+      },
+      FeatureTypes: ['TABLES', 'FORMS'] // Extract structured data too
+    })
     
-    console.log('Sending PDF to Vision API for OCR...')
-    const [result] = await client.batchAnnotateFiles(request)
+    const result = await client.send(command)
     
     let fullText = ''
     
-    if (result.responses && result.responses[0]) {
-      const response = result.responses[0]
-      if (response.responses) {
-        response.responses.forEach((pageResponse: any, pageIndex: number) => {
-          if (pageResponse.fullTextAnnotation) {
-            const pageText = pageResponse.fullTextAnnotation.text || ''
-            fullText += pageText + '\n'
-            console.log(`Page ${pageIndex + 1} OCR completed, text length: ${pageText.length}`)
+    // Process blocks returned by Textract
+    if (result.Blocks) {
+      console.log(`Textract returned ${result.Blocks.length} blocks`)
+      
+      // Extract all LINE blocks (actual text content)
+      const textBlocks = result.Blocks
+        .filter(block => block.BlockType === 'LINE')
+        .sort((a, b) => {
+          // Sort by vertical position to maintain reading order
+          const aTop = a.Geometry?.BoundingBox?.Top || 0
+          const bTop = b.Geometry?.BoundingBox?.Top || 0
+          return aTop - bTop
+        })
+      
+      textBlocks.forEach(block => {
+        if (block.Text) {
+          fullText += block.Text + ' '
+        }
+      })
+      
+      // Also extract key-value pairs (great for contracts)
+      const keyValuePairs = result.Blocks
+        .filter(block => block.BlockType === 'KEY_VALUE_SET' && block.EntityTypes?.includes('KEY'))
+      
+      if (keyValuePairs.length > 0) {
+        fullText += '\n\nExtracted Key Information:\n'
+        keyValuePairs.forEach(kvp => {
+          if (kvp.Text) {
+            fullText += kvp.Text + '\n'
           }
         })
       }
     }
     
-    console.log('Google Vision OCR completed, total text length:', fullText.length)
+    console.log('AWS Textract OCR completed, total text length:', fullText.length)
     return fullText.trim()
     
   } catch (error) {
-    console.error('Google Vision OCR failed:', error)
+    console.error('AWS Textract OCR failed:', error)
     throw error
   }
 }
@@ -158,12 +171,12 @@ Upload date: ${new Date().toLocaleDateString()}`)
             
             if (fullText.trim().length === 0 || fullText.trim().length < 50) {
               // PDF appears to be scanned, attempt OCR with Google Vision
-              console.log('PDF appears to be scanned, attempting OCR with Google Vision...')
+              console.log('PDF appears to be scanned, attempting OCR with AWS Textract...')
               
-              performOCRWithGoogleVision(buffer)
+              performOCRWithTextract(buffer)
                 .then(ocrText => {
                   if (ocrText.trim().length > 0) {
-                    console.log('Google Vision OCR successful!')
+                    console.log('AWS Textract OCR successful!')
                     resolve(ocrText)
                   } else {
                     resolve(`PDF file uploaded: ${file.name}
@@ -186,7 +199,7 @@ Upload date: ${new Date().toLocaleDateString()}`)
                   }
                 })
                 .catch(ocrError => {
-                  console.error('Google Vision OCR failed:', ocrError)
+                  console.error('AWS Textract OCR failed:', ocrError)
                   resolve(`PDF file uploaded: ${file.name}
 
 This PDF appears to be scanned, but OCR processing failed.
@@ -194,7 +207,7 @@ Error: ${ocrError.message}
 
 Please try:
 1. Converting to a Word document (.docx)
-2. Ensuring Google Cloud Vision API is properly configured
+2. Ensuring AWS credentials are properly configured
 3. Manual text entry for critical contract details
 
 File size: ${(file.size / 1024).toFixed(1)} KB
