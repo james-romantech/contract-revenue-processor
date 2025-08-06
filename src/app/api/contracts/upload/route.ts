@@ -53,9 +53,11 @@ export async function POST(request: NextRequest) {
     })
     
     if (useAI && openaiKey && openaiKey !== 'your-openai-api-key-here') {
+      console.log('✅ AI extraction conditions met, proceeding with AI extraction...')
       try {
-        // Use AI extraction
+        console.log('Calling extractContractDataWithAI with text length:', extractedText.length)
         const aiExtractedData = await extractContractDataWithAI(extractedText)
+        console.log('✅ AI extraction successful:', aiExtractedData)
         validation = await validateExtractedData(aiExtractedData)
         
         // Create contract with AI-extracted data
@@ -101,9 +103,21 @@ export async function POST(request: NextRequest) {
         })
 
       } catch (aiError) {
-        console.error('AI extraction failed, falling back to basic extraction:', aiError)
+        console.error('❌ AI extraction failed, falling back to basic extraction:', aiError)
+        console.error('AI Error details:', {
+          message: aiError instanceof Error ? aiError.message : 'Unknown error',
+          name: aiError instanceof Error ? aiError.name : 'Unknown',
+          stack: aiError instanceof Error ? aiError.stack : 'No stack'
+        })
         // Fall through to basic extraction
       }
+    } else {
+      console.log('❌ AI extraction conditions not met:', {
+        useAI,
+        hasOpenAIKey: !!openaiKey,
+        isNotPlaceholder: openaiKey !== 'your-openai-api-key-here'
+      })
+    }
     }
 
     // Fallback to basic pattern matching extraction
