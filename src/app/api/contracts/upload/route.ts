@@ -99,6 +99,11 @@ export async function POST(request: NextRequest) {
             description: contractData.description,
             aiExtractedData,
             validation
+          },
+          debug: {
+            usedAI: true,
+            textLength: extractedText.length,
+            aiSuccess: true
           }
         })
 
@@ -152,6 +157,15 @@ export async function POST(request: NextRequest) {
         extractedInfo: basicInfo,
         aiExtractedData: null,
         validation: { isValid: true, errors: [], warnings: ['AI extraction not available - using basic pattern matching'] }
+      },
+      debug: {
+        usedAI: false,
+        textLength: extractedText.length,
+        aiConditions: {
+          useAI,
+          hasOpenAIKey: !!openaiKey,
+          keyNotPlaceholder: openaiKey !== 'your-openai-api-key-here'
+        }
       }
     })
     
