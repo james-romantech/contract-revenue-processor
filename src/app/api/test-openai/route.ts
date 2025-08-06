@@ -3,9 +3,9 @@ import OpenAI from 'openai'
 
 export async function GET() {
   try {
-    const apiKey = process.env.OPENAI_API_KEY
+    const apiKey = process.env.OPENAI_KEY || process.env.OPENAI_API_KEY
     
-    if (!apiKey || apiKey === 'your-openai-api-key-here') {
+    if (!apiKey || apiKey === 'your-openai-api-key-here' || apiKey.startsWith('your-')) {
       return NextResponse.json({
         success: false,
         error: 'OpenAI API key not configured',
