@@ -4,8 +4,10 @@ import { extractTextFromFile, extractBasicContractInfo } from '@/lib/pdf-process
 import { extractContractDataWithAI, validateExtractedData } from '@/lib/ai-extractor'
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now()
   try {
-    console.log('Upload API called')
+    console.log('🚀 Upload API called at:', new Date().toISOString())
+    console.log('🕐 Cold start check - execution start time:', startTime)
     
     const formData = await request.formData()
     const file = formData.get('file') as File
@@ -40,12 +42,14 @@ export async function POST(request: NextRequest) {
     let validation = { isValid: true, errors: [], warnings: [] }
 
     const openaiKey = process.env.OPENAI_KEY || process.env.OPENAI_API_KEY
-    console.log('AI extraction check:', {
+    console.log('⚙️ AI extraction check:', {
       useAI,
       hasOpenAIKey: !!openaiKey,
       keyLength: openaiKey ? openaiKey.length : 0,
       isPlaceholder: openaiKey === 'your-openai-api-key-here',
       keyStart: openaiKey ? openaiKey.substring(0, 8) : 'none',
+      executionTime: Date.now() - startTime,
+      memoryUsage: process.memoryUsage(),
       envVars: {
         OPENAI_KEY: !!process.env.OPENAI_KEY,
         OPENAI_API_KEY: !!process.env.OPENAI_API_KEY
