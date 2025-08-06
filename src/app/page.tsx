@@ -87,6 +87,8 @@ export default function Home() {
           </h1>
           <p className="text-gray-600 mb-6">
             Upload contracts to automatically extract revenue terms and milestones using enhanced AI
+            <br />
+            <span className="text-sm text-blue-600">Supports both text-based and scanned PDFs with OCR</span>
           </p>
           
           {/* AI Toggle */}

@@ -1,5 +1,76 @@
 import mammoth from 'mammoth'
 
+async function performOCROnPDF(buffer: Buffer, pdfDocument: any): Promise<string> {
+  try {
+    console.log('Starting OCR processing for scanned PDF...')
+    
+    // Dynamic import to avoid build issues
+    const { createWorker } = await import('tesseract.js')
+    
+    const worker = await createWorker('eng', 1, {
+      logger: (m: any) => {
+        if (m.status === 'recognizing text') {
+          console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`)
+        }
+      }
+    })
+    
+    let fullText = ''
+    
+    // Process each page (limit to first 5 pages for performance/cost)
+    const pagesToProcess = Math.min(pdfDocument.numPages, 5)
+    
+    for (let pageNum = 1; pageNum <= pagesToProcess; pageNum++) {
+      try {
+        console.log(`OCR processing page ${pageNum} of ${pagesToProcess}`)
+        
+        const page = await pdfDocument.getPage(pageNum)
+        
+        // Set up canvas for rendering
+        const viewport = page.getViewport({ scale: 2.0 }) // Higher scale for better OCR
+        
+        // Create a canvas element
+        const canvas = new OffscreenCanvas(viewport.width, viewport.height)
+        const context = canvas.getContext('2d')
+        
+        if (!context) {
+          console.error('Could not get canvas context')
+          continue
+        }
+        
+        // Render PDF page to canvas
+        await page.render({
+          canvasContext: context,
+          viewport: viewport
+        }).promise
+        
+        // Convert canvas to image data for OCR
+        const imageData = canvas.convertToBlob({ type: 'image/png' })
+        const arrayBuffer = await (await imageData).arrayBuffer()
+        const buffer = new Uint8Array(arrayBuffer)
+        
+        // Perform OCR on the rendered page
+        const { data: { text } } = await worker.recognize(buffer)
+        fullText += text + '\n'
+        console.log(`Page ${pageNum} OCR text length:`, text.length)
+        
+      } catch (pageError) {
+        console.error(`Error processing page ${pageNum}:`, pageError)
+        // Continue with other pages
+      }
+    }
+    
+    await worker.terminate()
+    
+    console.log('OCR completed, total text length:', fullText.length)
+    return fullText.trim()
+    
+  } catch (error) {
+    console.error('OCR processing failed:', error)
+    throw error
+  }
+}
+
 export async function extractTextFromFile(file: File): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer())
   
@@ -36,14 +107,27 @@ export async function extractTextFromFile(file: File): Promise<string> {
       
       console.log('PDF extraction successful, text length:', fullText.length)
       
-      if (fullText.trim().length === 0) {
+      if (fullText.trim().length === 0 || fullText.trim().length < 50) {
+        // PDF appears to be scanned/image-based, attempt OCR
+        console.log('PDF appears to be scanned, attempting OCR...')
+        try {
+          const ocrText = await performOCROnPDF(buffer, pdf)
+          if (ocrText.trim().length > 0) {
+            console.log('OCR successful, text length:', ocrText.length)
+            return ocrText
+          }
+        } catch (ocrError) {
+          console.error('OCR failed:', ocrError)
+        }
+        
         return `PDF file uploaded: ${file.name}
 
-This PDF appears to contain no extractable text (possibly scanned images).
+This PDF appears to be a scanned document. OCR processing was attempted but may not have extracted complete text.
+
 Please try:
-1. Converting to a searchable PDF with OCR
+1. Using a higher quality scan if possible
 2. Converting to a Word document (.docx)
-3. Using manual entry for contract details
+3. Manual entry for critical contract details
 
 File size: ${(file.size / 1024).toFixed(1)} KB
 Pages: ${pdf.numPages}
