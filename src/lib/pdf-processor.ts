@@ -4,20 +4,48 @@ export async function extractTextFromFile(file: File): Promise<string> {
   const buffer = Buffer.from(await file.arrayBuffer())
   
   if (file.type === 'application/pdf') {
-    // For MVP, we'll rely on AI OCR and manual input for PDFs
-    // Since serverless PDF parsing is complex, we'll return a placeholder
-    // and let users know to use Word docs or manual entry for now
-    return `PDF file uploaded: ${file.name}
-    
-This is a PDF file. For the MVP version, please either:
-1. Convert your PDF to a Word document and re-upload
-2. Use the manual field editing to enter contract details
-3. The system will attempt basic text extraction, but results may be limited
+    try {
+      console.log('Processing PDF document with pdf-parse...')
+      console.log('Buffer length:', buffer.length)
+      
+      // Dynamic import to avoid build issues
+      const pdf = await import('pdf-parse')
+      const pdfParser = pdf.default || pdf
+      
+      const pdfData = await pdfParser(buffer, {
+        // Optimize for contract parsing
+        normalizeWhitespace: true,
+        disableCombineTextItems: false
+      })
+      
+      console.log('PDF extraction successful, text length:', pdfData.text.length)
+      console.log('PDF metadata:', pdfData.info)
+      
+      if (pdfData.text.trim().length === 0) {
+        return `PDF file uploaded: ${file.name}
+
+This PDF appears to contain no extractable text (possibly scanned images).
+Please try:
+1. Converting to a searchable PDF with OCR
+2. Converting to a Word document (.docx)
+3. Using manual entry for contract details
 
 File size: ${(file.size / 1024).toFixed(1)} KB
-Upload date: ${new Date().toLocaleDateString()}
-
-For accurate AI extraction, Word documents (.docx) work best.`
+Pages: ${pdfData.numpages}
+Upload date: ${new Date().toLocaleDateString()}`
+      }
+      
+      return pdfData.text
+      
+    } catch (error) {
+      console.error('PDF parsing error:', error)
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        name: error instanceof Error ? error.name : 'Unknown',
+        stack: error instanceof Error ? error.stack : 'No stack'
+      })
+      throw new Error(`Failed to parse PDF document: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
   }
   
   if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
