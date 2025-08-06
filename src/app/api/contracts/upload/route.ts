@@ -44,7 +44,12 @@ export async function POST(request: NextRequest) {
       useAI,
       hasOpenAIKey: !!openaiKey,
       keyLength: openaiKey ? openaiKey.length : 0,
-      isPlaceholder: openaiKey === 'your-openai-api-key-here'
+      isPlaceholder: openaiKey === 'your-openai-api-key-here',
+      keyStart: openaiKey ? openaiKey.substring(0, 8) : 'none',
+      envVars: {
+        OPENAI_KEY: !!process.env.OPENAI_KEY,
+        OPENAI_API_KEY: !!process.env.OPENAI_API_KEY
+      }
     })
     
     if (useAI && openaiKey && openaiKey !== 'your-openai-api-key-here') {
