@@ -50,10 +50,17 @@ export async function POST(request: NextRequest) {
       keyStart: openaiKey ? openaiKey.substring(0, 8) : 'none',
       executionTime: Date.now() - startTime,
       memoryUsage: process.memoryUsage(),
+      isColdStart: Date.now() - startTime > 1000,
+      nodeVersion: process.version,
+      platform: process.platform,
       envVars: {
         OPENAI_KEY: !!process.env.OPENAI_KEY,
-        OPENAI_API_KEY: !!process.env.OPENAI_API_KEY
-      }
+        OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
+        NODE_ENV: process.env.NODE_ENV,
+        VERCEL_ENV: process.env.VERCEL_ENV
+      },
+      allEnvKeys: Object.keys(process.env).filter(key => key.includes('OPENAI')),
+      userAgent: request.headers.get('user-agent')?.substring(0, 50)
     })
     
     if (useAI && openaiKey && openaiKey !== 'your-openai-api-key-here') {
