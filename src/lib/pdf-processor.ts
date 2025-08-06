@@ -7,69 +7,59 @@ async function performOCRWithGoogleVision(buffer: Buffer): Promise<string> {
     
     // Dynamic imports for serverless compatibility
     const vision = await import('@google-cloud/vision')
-    const pdf = await import('pdf-poppler')
-    const sharp = await import('sharp')
     
-    const client = new vision.ImageAnnotatorClient()
-    
-    // Convert PDF to images first
-    console.log('Converting PDF pages to images...')
-    
-    // Create temporary file path for PDF processing
-    const tempDir = '/tmp'
-    const tempPdfPath = `${tempDir}/contract_${Date.now()}.pdf`
-    
-    // Write buffer to temporary file (pdf-poppler needs file path)
-    const fs = await import('fs')
-    fs.writeFileSync(tempPdfPath, buffer)
-    
-    // Convert PDF pages to images
-    const options = {
-      format: 'png',
-      out_dir: tempDir,
-      out_prefix: `contract_${Date.now()}`,
-      page: null, // Convert all pages
-      scale: 2048 // High resolution for better OCR
+    // Get credentials from environment variable
+    const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
+    if (!credentialsJson) {
+      throw new Error('Google Cloud Vision credentials not configured')
     }
     
-    const imagePaths = await pdf.convert(tempPdfPath, options)
-    console.log(`Converted ${imagePaths.length} pages to images`)
+    let credentials
+    try {
+      credentials = JSON.parse(credentialsJson)
+    } catch (e) {
+      throw new Error('Invalid Google Cloud Vision credentials format')
+    }
+    
+    const client = new vision.ImageAnnotatorClient({
+      credentials: credentials
+    })
+    
+    // Google Vision can process PDFs directly!
+    console.log('Processing PDF with Google Cloud Vision...')
+    
+    // Vision API can handle PDFs up to 20MB and 2000 pages
+    const request = {
+      requests: [{
+        inputConfig: {
+          content: buffer,
+          mimeType: 'application/pdf'
+        },
+        features: [{
+          type: 'DOCUMENT_TEXT_DETECTION',
+          maxResults: 50
+        }],
+        pages: [1, 2, 3, 4, 5] // Process first 5 pages for speed
+      }]
+    }
+    
+    console.log('Sending PDF to Vision API for OCR...')
+    const [result] = await client.batchAnnotateFiles(request)
     
     let fullText = ''
     
-    // Process each page with Google Vision
-    for (let i = 0; i < Math.min(imagePaths.length, 10); i++) { // Limit to 10 pages
-      try {
-        console.log(`Processing page ${i + 1} with Vision API...`)
-        
-        // Read image buffer
-        const imagePath = imagePaths[i]
-        const imageBuffer = fs.readFileSync(imagePath)
-        
-        // Perform OCR with Google Vision
-        const [result] = await client.textDetection({
-          image: { content: imageBuffer }
+    if (result.responses && result.responses[0]) {
+      const response = result.responses[0]
+      if (response.responses) {
+        response.responses.forEach((pageResponse: any, pageIndex: number) => {
+          if (pageResponse.fullTextAnnotation) {
+            const pageText = pageResponse.fullTextAnnotation.text || ''
+            fullText += pageText + '\n'
+            console.log(`Page ${pageIndex + 1} OCR completed, text length: ${pageText.length}`)
+          }
         })
-        
-        const detections = result.textAnnotations
-        if (detections && detections.length > 0) {
-          // First annotation contains the full text
-          const pageText = detections[0].description || ''
-          fullText += pageText + '\n'
-          console.log(`Page ${i + 1} OCR completed, text length: ${pageText.length}`)
-        }
-        
-        // Clean up image file
-        fs.unlinkSync(imagePath)
-        
-      } catch (pageError) {
-        console.error(`Error processing page ${i + 1}:`, pageError)
-        // Continue with other pages
       }
     }
-    
-    // Clean up temporary PDF file
-    fs.unlinkSync(tempPdfPath)
     
     console.log('Google Vision OCR completed, total text length:', fullText.length)
     return fullText.trim()
