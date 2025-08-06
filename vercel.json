@@ -3,9 +3,5 @@
     "src/app/api/contracts/upload/route.ts": {
       "maxDuration": 30
     }
-  },
-  "env": {
-    "DATABASE_URL": "@database_url",
-    "OPENAI_API_KEY": "@openai_api_key"
   }
 }
