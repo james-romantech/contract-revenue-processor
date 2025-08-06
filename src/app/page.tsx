@@ -83,10 +83,10 @@ export default function Home() {
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            Contract Revenue Processor
+            ContractSync AI
           </h1>
           <p className="text-gray-600 mb-6">
-            Upload contracts to automatically extract revenue terms and milestones using enhanced AI
+            AI-powered contract analysis for revenue recognition and milestone tracking
             <br />
             <span className="text-sm text-blue-600">Supports both text-based and scanned PDFs with OCR</span>
           </p>
