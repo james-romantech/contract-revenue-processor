@@ -95,12 +95,54 @@ export async function extractTextFromFile(file: File): Promise<string> {
       return new Promise((resolve, reject) => {
         const pdfParser = new PDFParserClass(null, 1)
         
+        // Add timeout handler (10 seconds)
+        const timeout = setTimeout(() => {
+          console.error('PDF parsing timeout - taking too long')
+          resolve(`PDF file uploaded: ${file.name}
+
+PDF processing timed out (serverless function limit).
+
+This usually happens with:
+1. Large PDF files
+2. Complex multi-page documents
+3. Scanned PDFs requiring OCR
+
+For immediate results:
+1. Convert to a Word document (.docx) - works instantly
+2. Use a smaller/simpler PDF
+3. Split large PDFs into smaller sections
+
+File size: ${(file.size / 1024).toFixed(1)} KB
+Upload date: ${new Date().toLocaleDateString()}`)
+        }, 9000) // 9 seconds (Vercel limit is 10)
+        
         pdfParser.on('pdfParser_dataError', (errData: any) => {
+          clearTimeout(timeout)
           console.error('PDF parsing error:', errData)
-          reject(new Error(`PDF parsing failed: ${errData.parserError}`))
+          console.error('PDF parser error details:', JSON.stringify(errData))
+          
+          // Don't reject, return fallback message
+          resolve(`PDF file uploaded: ${file.name}
+
+PDF text extraction encountered an issue.
+Error: ${errData.parserError || 'Unknown parsing error'}
+
+This often happens with:
+1. Scanned PDFs (image-based documents)
+2. Complex PDF layouts or forms
+3. Password-protected PDFs
+
+For best results:
+1. Convert to a Word document (.docx)
+2. Use a text-based (not scanned) PDF
+3. Ensure PDF is not password-protected
+
+File size: ${(file.size / 1024).toFixed(1)} KB
+Upload date: ${new Date().toLocaleDateString()}`)
         })
         
         pdfParser.on('pdfParser_dataReady', (pdfData: any) => {
+          clearTimeout(timeout) // Clear timeout on success
           try {
             console.log('PDF parsed successfully, extracting text...')
             
