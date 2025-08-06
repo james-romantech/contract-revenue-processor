@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Contract {
+  id            String   @id @default(cuid())
+  filename      String
+  originalText  String?
+  status        String   @default("processing") // processing, completed, failed
+  
+  // Extracted fields
+  contractValue Decimal?
+  startDate     DateTime?
+  endDate       DateTime?
+  clientName    String?
+  description   String?
+  
+  milestones    Milestone[]
+  revenueItems  RevenueItem[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Milestone {
+  id          String   @id @default(cuid())
+  contractId  String
+  contract    Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  
+  name        String
+  value       Decimal
+  dueDate     DateTime?
+  completed   Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RevenueItem {
+  id          String   @id @default(cuid())
+  contractId  String
+  contract    Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  
+  amount      Decimal
+  recognitionDate DateTime
+  type        String   // milestone, monthly, percentage, billed
+  description String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
