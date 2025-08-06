@@ -117,8 +117,19 @@ export async function POST(request: NextRequest) {
     
   } catch (error) {
     console.error('Upload error:', error)
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      name: error instanceof Error ? error.name : 'Unknown',
+      cause: error instanceof Error ? error.cause : undefined
+    })
+    
     return NextResponse.json(
-      { error: 'Failed to process file' }, 
+      { 
+        error: 'Failed to process file',
+        details: error instanceof Error ? error.message : 'Unknown error',
+        type: error instanceof Error ? error.name : 'Unknown'
+      }, 
       { status: 500 }
     )
   }

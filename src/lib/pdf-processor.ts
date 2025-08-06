@@ -23,11 +23,19 @@ For accurate AI extraction, Word documents (.docx) work best.`
   if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       file.type === 'application/msword') {
     try {
+      console.log('Processing Word document with mammoth...')
+      console.log('Buffer length:', buffer.length)
       const result = await mammoth.extractRawText({ buffer })
+      console.log('Mammoth extraction successful, text length:', result.value.length)
       return result.value
     } catch (error) {
       console.error('Word document parsing error:', error)
-      throw new Error('Failed to parse Word document')
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        name: error instanceof Error ? error.name : 'Unknown',
+        stack: error instanceof Error ? error.stack : 'No stack'
+      })
+      throw new Error(`Failed to parse Word document: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
   
