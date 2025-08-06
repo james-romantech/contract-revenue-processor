@@ -44,7 +44,24 @@ Upload date: ${new Date().toLocaleDateString()}`
         name: error instanceof Error ? error.name : 'Unknown',
         stack: error instanceof Error ? error.stack : 'No stack'
       })
-      throw new Error(`Failed to parse PDF document: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      
+      // Fallback: return placeholder text and let AI handle manual input
+      return `PDF file uploaded: ${file.name}
+
+PDF text extraction failed. This can happen with:
+1. Scanned PDFs (image-based documents)
+2. Password-protected PDFs
+3. Corrupted or complex PDF layouts
+
+For best results with AI extraction, please:
+1. Convert to a searchable PDF with OCR
+2. Convert to a Word document (.docx) 
+3. Copy and paste contract text manually if needed
+
+File size: ${(file.size / 1024).toFixed(1)} KB
+Upload date: ${new Date().toLocaleDateString()}
+
+Error details: ${error instanceof Error ? error.message : 'Unknown error'}`
     }
   }
   

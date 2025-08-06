@@ -20,8 +20,21 @@ export async function POST(request: NextRequest) {
 
     // Extract text from the file
     console.log('Extracting text from file...')
-    const extractedText = await extractTextFromFile(file)
-    console.log('Extracted text length:', extractedText.length)
+    let extractedText
+    try {
+      extractedText = await extractTextFromFile(file)
+      console.log('Extracted text length:', extractedText.length)
+    } catch (textExtractionError) {
+      console.error('Text extraction failed:', textExtractionError)
+      return NextResponse.json(
+        { 
+          error: 'Failed to extract text from file',
+          details: textExtractionError instanceof Error ? textExtractionError.message : 'Unknown error',
+          type: 'TextExtractionError'
+        }, 
+        { status: 400 }
+      )
+    }
     
     let contractData
     let validation = { isValid: true, errors: [], warnings: [] }
