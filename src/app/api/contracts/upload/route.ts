@@ -6,7 +6,7 @@ import { extractContractDataWithAI, validateExtractedData } from '@/lib/ai-extra
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
   try {
-    console.log('🚀 Upload API called at:', new Date().toISOString())
+    console.log('🚀 Upload API v2.0 called at:', new Date().toISOString())
     console.log('🕐 Cold start check - execution start time:', startTime)
     
     const formData = await request.formData()
