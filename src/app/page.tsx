@@ -66,12 +66,19 @@ export default function Home() {
         body: formData,
       })
 
+      const result = await response.json()
+      console.log('Upload response:', result)
+      
       if (!response.ok) {
-        throw new Error('Failed to upload file')
+        throw new Error(result.error || 'Failed to upload file')
       }
 
-      const result = await response.json()
       setContractData(result.contract)
+      
+      // Show warnings if AI extraction failed
+      if (result.contract?.validation?.warnings?.length > 0) {
+        setError('Warning: ' + result.contract.validation.warnings.join(', '))
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -99,11 +106,14 @@ export default function Home() {
               <input
                 type="checkbox"
                 checked={useAI}
-                onChange={(e) => setUseAI(e.target.checked)}
+                onChange={(e) => {
+                  console.log('AI checkbox changed to:', e.target.checked)
+                  setUseAI(e.target.checked)
+                }}
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 disabled={isProcessing}
               />
-              Use AI Extraction (requires OpenAI API key)
+              Use AI Extraction (requires OpenAI API key) - Currently: {useAI ? 'ON' : 'OFF'}
             </label>
           </div>
         </div>
