@@ -14,6 +14,10 @@ interface ContractData {
   description: string | null
   aiExtractedData?: {
     contractValue: number | null
+    workStartDate?: string | null
+    workEndDate?: string | null
+    billingStartDate?: string | null
+    billingEndDate?: string | null
     startDate: string | null
     endDate: string | null
     clientName: string | null
@@ -224,36 +228,53 @@ export function ContractEditor({ contractData, onSave }: ContractEditorProps) {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                <Calendar className="inline h-4 w-4 mr-1" />
-                Start Date
-              </label>
-              {isEditing ? (
-                <input
-                  type="date"
-                  value={aiData?.startDate || ''}
-                  onChange={(e) => handleFieldChange('startDate', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              ) : (
-                <p className="text-gray-900">{aiData?.startDate || 'Not detected'}</p>
-              )}
+          {/* Work Period Dates */}
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold text-gray-700">Work Period (for Straight-line Revenue)</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <Calendar className="inline h-3 w-3 mr-1" />
+                  Work Start
+                </label>
+                <p className="text-gray-900 text-sm">
+                  {aiData?.workStartDate || aiData?.startDate || 'Not detected'}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <Calendar className="inline h-3 w-3 mr-1" />
+                  Work End
+                </label>
+                <p className="text-gray-900 text-sm">
+                  {aiData?.workEndDate || aiData?.endDate || 'Not detected'}
+                </p>
+              </div>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-              {isEditing ? (
-                <input
-                  type="date"
-                  value={aiData?.endDate || ''}
-                  onChange={(e) => handleFieldChange('endDate', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              ) : (
-                <p className="text-gray-900">{aiData?.endDate || 'Not detected'}</p>
-              )}
+          </div>
+
+          {/* Billing Period Dates */}
+          <div className="space-y-2">
+            <h4 className="text-sm font-semibold text-gray-700">Billing Period (for Billed-basis Revenue)</h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <Calendar className="inline h-3 w-3 mr-1" />
+                  Billing Start
+                </label>
+                <p className="text-gray-900 text-sm">
+                  {aiData?.billingStartDate || aiData?.startDate || 'Not detected'}
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  <Calendar className="inline h-3 w-3 mr-1" />
+                  Billing End
+                </label>
+                <p className="text-gray-900 text-sm">
+                  {aiData?.billingEndDate || aiData?.endDate || 'Not detected'}
+                </p>
+              </div>
             </div>
           </div>
 

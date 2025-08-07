@@ -10,6 +10,10 @@ interface RevenueCalculatorProps {
     startDate: string | null
     endDate: string | null
     aiExtractedData?: {
+      workStartDate?: string | null
+      workEndDate?: string | null
+      billingStartDate?: string | null
+      billingEndDate?: string | null
       milestones: Array<{
         name: string
         amount: number
@@ -35,10 +39,27 @@ export function RevenueCalculator({ contractData }: RevenueCalculatorProps) {
   const calculateRevenue = () => {
     if (!canCalculateRevenue) return
 
+    // Use work dates for straight-line, billing dates for billed-basis
+    let startDate, endDate
+    
+    if (allocationType === 'straight-line' || allocationType === 'percentage-complete') {
+      // Use work period dates for straight-line revenue recognition
+      startDate = contractData.aiExtractedData?.workStartDate || contractData.startDate
+      endDate = contractData.aiExtractedData?.workEndDate || contractData.endDate
+    } else if (allocationType === 'billed-basis') {
+      // Use billing period dates for billed-basis revenue
+      startDate = contractData.aiExtractedData?.billingStartDate || contractData.startDate
+      endDate = contractData.aiExtractedData?.billingEndDate || contractData.endDate
+    } else {
+      // Default to standard dates
+      startDate = contractData.startDate
+      endDate = contractData.endDate
+    }
+
     const params: RevenueCalculationParams = {
       totalValue: contractData.contractValue!,
-      startDate: new Date(contractData.startDate!),
-      endDate: new Date(contractData.endDate!),
+      startDate: new Date(startDate!),
+      endDate: new Date(endDate!),
       allocationType,
       milestones: contractData.aiExtractedData?.milestones.map(m => ({
         name: m.name,

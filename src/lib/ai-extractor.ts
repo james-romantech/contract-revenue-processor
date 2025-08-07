@@ -6,6 +6,13 @@ const openai = new OpenAI({
 
 export interface ExtractedContractData {
   contractValue: number | null
+  // Work period dates (for straight-line revenue)
+  workStartDate: string | null
+  workEndDate: string | null
+  // Billing period dates (for billed-basis revenue)
+  billingStartDate: string | null
+  billingEndDate: string | null
+  // Legacy fields for backward compatibility
   startDate: string | null
   endDate: string | null
   clientName: string | null
@@ -49,17 +56,30 @@ EXAMPLES:
 
 Extract these specific fields:
 - Contract Value: Total monetary value (calculate from payments if needed)
-- Start Date: Project start date (infer from first payment/activity mention)
-- End Date: Project end date (infer from last payment/activity mention)
+- Work Start Date: When work/services begin (look for "support required", "services commence", "work begins")
+- Work End Date: When work/services end (look for "through", "concluding", "services end")
+- Billing Start Date: When billing begins (first payment/invoice date)
+- Billing End Date: When billing ends (last payment/invoice date)
+- Start Date: Same as Work Start Date (for backward compatibility)
+- End Date: Same as Work End Date (for backward compatibility)
 - Client Name: The client/customer organization name
 - Description: Brief project description (1-2 sentences)
 - Milestones: Payment installments with calculated dates and amounts
 - Payment Terms: Payment schedule/terms summary
 - Deliverables: List of key deliverables/outputs
 
+CRITICAL DISTINCTION:
+- Work Period: When services are performed ("support required during Aug-Dec")
+- Billing Period: When payments are made ("billed Aug-Nov")
+- These are often different! Extract both separately.
+
 IMPORTANT: Return ONLY a valid JSON object. Do not include any text before or after the JSON. Do not wrap in markdown code blocks. Return this exact structure:
 {
   "contractValue": number | null,
+  "workStartDate": "YYYY-MM-DD" | null,
+  "workEndDate": "YYYY-MM-DD" | null,
+  "billingStartDate": "YYYY-MM-DD" | null,
+  "billingEndDate": "YYYY-MM-DD" | null,
   "startDate": "YYYY-MM-DD" | null,
   "endDate": "YYYY-MM-DD" | null,
   "clientName": string | null,
@@ -170,8 +190,13 @@ export async function extractContractDataWithAI(contractText: string): Promise<E
     // Set defaults for missing fields
     const validatedData: ExtractedContractData = {
       contractValue: extractedData.contractValue || null,
-      startDate: extractedData.startDate || null,
-      endDate: extractedData.endDate || null,
+      workStartDate: extractedData.workStartDate || null,
+      workEndDate: extractedData.workEndDate || null,
+      billingStartDate: extractedData.billingStartDate || null,
+      billingEndDate: extractedData.billingEndDate || null,
+      // Use work dates as fallback for legacy fields
+      startDate: extractedData.startDate || extractedData.workStartDate || null,
+      endDate: extractedData.endDate || extractedData.workEndDate || null,
       clientName: extractedData.clientName || null,
       description: extractedData.description || null,
       milestones: Array.isArray(extractedData.milestones) ? extractedData.milestones : [],
