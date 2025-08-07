@@ -170,49 +170,80 @@ Upload date: ${new Date().toLocaleDateString()}`)
             console.log('PDF text extraction completed, text length:', fullText.length)
             
             if (fullText.trim().length === 0 || fullText.trim().length < 50) {
-              // PDF appears to be scanned, attempt OCR with Google Vision
-              console.log('PDF appears to be scanned, attempting OCR with AWS Textract...')
+              // PDF appears to be scanned
+              console.log('PDF appears to be scanned (no text extracted)')
               
-              performOCRWithTextract(buffer)
-                .then(ocrText => {
-                  if (ocrText.trim().length > 0) {
-                    console.log('AWS Textract OCR successful!')
-                    resolve(ocrText)
-                  } else {
-                    resolve(`PDF file uploaded: ${file.name}
+              // Check if AWS credentials are configured
+              const hasAWSCredentials = process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
+              
+              if (!hasAWSCredentials) {
+                resolve(`This appears to be a scanned PDF that requires OCR.
 
-This PDF appears to be a scanned document, but OCR could not extract text.
+To enable OCR for scanned documents:
+1. Set up AWS Textract (see setup-aws-textract.md)
+2. Configure AWS credentials in Vercel
+3. Enable Textract in your AWS account
+
+For now, please:
+• Convert the PDF to a Word document (.docx)
+• Use a text-based PDF (not scanned)
+• Or copy/paste the contract text directly
+
+File: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
+              } else {
+                // Try OCR with AWS Textract
+                console.log('Attempting OCR with AWS Textract...')
+                
+                performOCRWithTextract(buffer)
+                  .then(ocrText => {
+                    if (ocrText.trim().length > 0) {
+                      console.log('AWS Textract OCR successful!')
+                      resolve(ocrText)
+                    } else {
+                      resolve(`OCR completed but no text was extracted from the scanned PDF.
+
 This may be due to:
+• Poor scan quality
+• Handwritten text
+• Non-standard fonts
+• Image-only PDF
 
-1. Poor image quality or resolution
-2. Handwritten text (not supported)
-3. Complex layouts or graphics
-4. Non-English text (configure language if needed)
+Please try converting to a Word document (.docx) or using a text-based PDF.
+
+File: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
+                    }
+                  })
+                  .catch(ocrError => {
+                    console.error('AWS Textract OCR failed:', ocrError)
+                    
+                    // Check for specific AWS errors
+                    if (ocrError.message?.includes('SubscriptionRequired')) {
+                      resolve(`AWS Textract requires additional setup in your AWS account.
+
+To enable Textract:
+1. Log into AWS Console
+2. Go to AWS Textract service
+3. Click "Get Started" or enable the service
+4. Textract may require explicit opt-in in some regions
+
+Alternative options:
+• Convert this PDF to a Word document (.docx)
+• Use a text-based PDF (not scanned)
+• Enable Textract in AWS Console, then try again
+
+File: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
+                    } else {
+                      resolve(`OCR processing failed: ${ocrError.message}
 
 Please try:
-1. Using a higher quality scan
-2. Converting to a Word document (.docx)
-3. Manual text entry
+• Converting to a Word document (.docx)
+• Using a text-based PDF
+• Checking AWS credentials configuration
 
-File size: ${(file.size / 1024).toFixed(1)} KB
-Upload date: ${new Date().toLocaleDateString()}`)
-                  }
-                })
-                .catch(ocrError => {
-                  console.error('AWS Textract OCR failed:', ocrError)
-                  resolve(`PDF file uploaded: ${file.name}
-
-This PDF appears to be scanned, but OCR processing failed.
-Error: ${ocrError.message}
-
-Please try:
-1. Converting to a Word document (.docx)
-2. Ensuring AWS credentials are properly configured
-3. Manual text entry for critical contract details
-
-File size: ${(file.size / 1024).toFixed(1)} KB
-Upload date: ${new Date().toLocaleDateString()}`)
-                })
+File: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
+                    }
+                  })
+              }
             } else {
               resolve(fullText.trim())
             }
