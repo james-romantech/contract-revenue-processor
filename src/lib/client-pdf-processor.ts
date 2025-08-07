@@ -1,6 +1,24 @@
 // Client-side PDF processing to avoid server timeout
 // This runs in the browser with no time limits
 
+// Fallback function for legacy PDF processing
+async function extractWithLegacyPDF(file: File, pdfjsLib: any): Promise<string> {
+  const arrayBuffer = await file.arrayBuffer()
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  
+  let fullText = ''
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum)
+    const textContent = await page.getTextContent()
+    const pageText = textContent.items
+      .map((item: any) => item.str || '')
+      .join(' ')
+    fullText += `\n--- Page ${pageNum} ---\n${pageText}\n`
+  }
+  
+  return fullText
+}
+
 export async function extractTextFromPDFClient(file: File): Promise<string> {
   try {
     console.log('Processing PDF client-side (no timeout limits)...')
@@ -8,8 +26,16 @@ export async function extractTextFromPDFClient(file: File): Promise<string> {
     // Dynamic import to avoid SSR issues
     const pdfjsLib = await import('pdfjs-dist')
     
-    // Set worker
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+    // Set up worker - try multiple approaches
+    if (typeof window !== 'undefined') {
+      try {
+        // Option 1: Try to use the worker from unpkg CDN (more reliable)
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`
+      } catch (error) {
+        console.warn('Failed to set worker URL, PDF processing may be slower')
+        // Worker will run in main thread as fallback (slower but works)
+      }
+    }
     
     const arrayBuffer = await file.arrayBuffer()
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
@@ -50,7 +76,15 @@ export async function extractTextFromPDFClient(file: File): Promise<string> {
 export async function processPDFInChunks(file: File, chunkSize: number = 2): Promise<string[]> {
   try {
     const pdfjsLib = await import('pdfjs-dist')
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+    
+    // Set up worker
+    if (typeof window !== 'undefined') {
+      try {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`
+      } catch (error) {
+        console.warn('Failed to set worker URL, PDF processing may be slower')
+      }
+    }
     
     const arrayBuffer = await file.arrayBuffer()
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
