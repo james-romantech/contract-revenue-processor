@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { FileUpload } from '@/components/file-upload'
+import { FileUploadEnhanced } from '@/components/file-upload-enhanced'
 import { ContractEditor } from '@/components/contract-editor'
 import { RevenueCalculator } from '@/components/revenue-calculator'
 
@@ -48,14 +48,23 @@ export default function Home() {
   const [contractData, setContractData] = useState<ContractData | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const handleFileSelect = async (file: File) => {
+  const handleProcessComplete = async (extractedText: string, file: File) => {
     setIsProcessing(true)
     setError(null)
     setContractData(null)
 
     try {
       const formData = new FormData()
-      formData.append('file', file)
+      
+      // If we have extracted text (from PDF), send it directly
+      if (extractedText) {
+        formData.append('extractedText', extractedText)
+        formData.append('fileName', file.name)
+        formData.append('fileType', file.type)
+      } else {
+        // For Word docs, send the file for server processing
+        formData.append('file', file)
+      }
       formData.append('useAI', 'true') // Always use AI extraction
 
       const response = await fetch('/api/contracts/upload', {
@@ -98,7 +107,7 @@ export default function Home() {
           
         </div>
 
-        <FileUpload onFileSelect={handleFileSelect} isProcessing={isProcessing} />
+        <FileUploadEnhanced onProcessComplete={handleProcessComplete} isProcessing={isProcessing} />
 
         {error && (
           <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">

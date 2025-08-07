@@ -42,6 +42,10 @@ Your task is to:
 4. Extract total contract values even when stated indirectly
 5. Parse tables and structured data (look for columnar data, pipes |, tabs, or aligned text)
 6. Extract information from payment schedule tables, service tables, and deliverable tables
+7. Handle multi-column layouts and preserve table relationships
+8. Recognize common table headers like "Date", "Amount", "Description", "Phase", "Milestone", "Payment", "Invoice", "Scope of Service", "Professional Fees", "Timing", "Deliverable", "Task", "Fee", "Cost", "Budget", "Hours", "Rate", "Total", "Due Date", "Period", "Service", "Work", "Completion"
+9. Extract data from pricing tables, rate cards, and fee schedules
+10. Understand hierarchical structures in contracts (sections, subsections, exhibits)
 
 DATE CONVENTIONS:
 - For month-only references, use END of month dates
@@ -54,19 +58,29 @@ EXAMPLES:
 - "four monthly installments of $25,000 beginning August 2025" → creates 4 milestones: Aug 31, Sep 30, Oct 31, Nov 30
 - "August through December 2025" → startDate: "2025-08-31", endDate: "2025-12-31"
 
+TABLE EXAMPLES:
+- "Phase 1 | $50,000 | Aug 2025" → Extract as milestone: Phase 1, $50,000, 2025-08-31
+- Payment Schedule table with columns [Date, Amount, Description] → Parse each row as a milestone
+- Rate card showing "Senior Consultant: $250/hr" → Extract hourly rates and calculate totals if hours provided
+
+SECTION EXAMPLES:
+- "Scope of Service: Implementation of ERP system from August through December 2025" → Extract description and work period
+- "Professional Fees: Total engagement fee of $100,000 payable in four installments" → Extract contract value and payment structure
+- "Timing: Services to commence August 1, 2025 and conclude December 31, 2025" → Extract work start/end dates
+
 Extract these specific fields:
-- Contract Value: Total monetary value (calculate from payments if needed)
-- Work Start Date: When work/services begin (look for "support required", "services commence", "work begins")
-- Work End Date: When work/services end (look for "through", "concluding", "services end")
+- Contract Value: Total monetary value (calculate from payments if needed, look in "Professional Fees" sections)
+- Work Start Date: When work/services begin (look for "support required", "services commence", "work begins", "Timing" sections)
+- Work End Date: When work/services end (look for "through", "concluding", "services end", "Timing" sections)
 - Billing Start Date: When billing begins (first payment/invoice date)
 - Billing End Date: When billing ends (last payment/invoice date)
 - Start Date: Same as Work Start Date (for backward compatibility)
 - End Date: Same as Work End Date (for backward compatibility)
 - Client Name: The client/customer organization name
-- Description: Brief project description (1-2 sentences)
-- Milestones: Payment installments with calculated dates and amounts
-- Payment Terms: Payment schedule/terms summary
-- Deliverables: List of key deliverables/outputs
+- Description: Brief project description (1-2 sentences, often in "Scope of Service" sections)
+- Milestones: Payment installments with calculated dates and amounts (often in "Professional Fees" or "Payment Schedule" sections)
+- Payment Terms: Payment schedule/terms summary (look for "Professional Fees", "Payment Terms", "Billing" sections)
+- Deliverables: List of key deliverables/outputs (often in "Scope of Service" or "Deliverables" sections)
 
 CRITICAL DISTINCTION:
 - Work Period: When services are performed ("support required during Aug-Dec")
@@ -119,6 +133,16 @@ CONTRACT TEXT TO ANALYZE:`
 
 export async function extractContractDataWithAI(contractText: string): Promise<ExtractedContractData> {
   try {
+    console.log(`Sending contract to AI for extraction. Text length: ${contractText.length} characters`)
+    
+    // Rough token estimate (1 token ≈ 4 characters)
+    const estimatedTokens = Math.ceil(contractText.length / 4)
+    console.log(`Estimated tokens: ${estimatedTokens}`)
+    
+    if (estimatedTokens > 100000) {
+      console.warn(`⚠️ Contract may be too long (${estimatedTokens} estimated tokens). Consider truncating.`)
+    }
+    
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [

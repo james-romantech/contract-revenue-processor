@@ -79,6 +79,27 @@ async function performOCRWithAzure(buffer: Buffer): Promise<string> {
     
     if (result.analyzeResult && result.analyzeResult.readResults) {
       for (const page of result.analyzeResult.readResults) {
+        // First, check if there are tables detected
+        if (result.analyzeResult.pageResults && result.analyzeResult.pageResults.length > 0) {
+          const pageResult = result.analyzeResult.pageResults.find((pr: any) => pr.page === page.page)
+          if (pageResult && pageResult.tables) {
+            // Process tables
+            for (const table of pageResult.tables) {
+              fullText += '\n[TABLE DETECTED]\n'
+              for (const cell of table.cells || []) {
+                if (cell.text) {
+                  fullText += `Row ${cell.rowIndex}, Col ${cell.columnIndex}: ${cell.text}\t`
+                  if (cell.columnIndex === (table.columns - 1)) {
+                    fullText += '\n'
+                  }
+                }
+              }
+              fullText += '[END TABLE]\n\n'
+            }
+          }
+        }
+        
+        // Then add regular lines
         for (const line of page.lines || []) {
           fullText += line.text + '\n'
         }
@@ -109,10 +130,20 @@ export async function extractTextFromFile(file: File): Promise<string> {
       return new Promise((resolve, reject) => {
         const pdfParser = new PDFParserClass(null, 1)
         
-        // Add timeout handler (10 seconds)
+        let pagesProcessedBeforeTimeout = 0
+        let partialText = ''
+        
+        // Add timeout handler (55 seconds for Vercel Pro - 60 second limit)
         const timeout = setTimeout(() => {
-          console.error('PDF parsing timeout - taking too long')
-          resolve(`PDF file uploaded: ${file.name}
+          console.error(`PDF parsing timeout - processed ${pagesProcessedBeforeTimeout} pages before 55 second limit`)
+          console.error(`Processing was interrupted. Returning partial text from ${pagesProcessedBeforeTimeout} pages.`)
+          
+          // If we have partial text, return it instead of error message
+          if (partialText.length > 100) {
+            console.log(`Returning partial text (${partialText.length} chars) from ${pagesProcessedBeforeTimeout} pages`)
+            resolve(partialText)
+          } else {
+            resolve(`PDF file uploaded: ${file.name}
 
 PDF processing timed out (serverless function limit).
 
@@ -128,7 +159,8 @@ For immediate results:
 
 File size: ${(file.size / 1024).toFixed(1)} KB
 Upload date: ${new Date().toLocaleDateString()}`)
-        }, 9000) // 9 seconds (Vercel limit is 10)
+          }
+        }, 55000) // 55 seconds (Vercel Pro limit is 60)
         
         pdfParser.on('pdfParser_dataError', (errData: any) => {
           clearTimeout(timeout)
@@ -159,26 +191,66 @@ Upload date: ${new Date().toLocaleDateString()}`)
           clearTimeout(timeout) // Clear timeout on success
           try {
             console.log('PDF parsed successfully, extracting text...')
+            console.log(`Processing ${pdfData.Pages ? pdfData.Pages.length : 0} pages...`)
             
             let fullText = ''
+            let processedPages = 0
             
             if (pdfData.Pages && pdfData.Pages.length > 0) {
               pdfData.Pages.forEach((page: any, pageIndex: number) => {
                 if (page.Texts && page.Texts.length > 0) {
-                  const pageText = page.Texts
-                    .map((text: any) => {
-                      if (text.R && text.R.length > 0) {
-                        return text.R.map((run: any) => decodeURIComponent(run.T)).join('')
-                      }
-                      return ''
-                    })
-                    .join(' ')
-                  fullText += pageText + '\n'
+                  // Group texts by Y position to preserve line structure (important for tables)
+                  const textsByLine: { [key: string]: any[] } = {}
+                  
+                  page.Texts.forEach((text: any) => {
+                    // Round Y position to group texts on same line
+                    const yPos = Math.round(text.y * 10) / 10
+                    if (!textsByLine[yPos]) {
+                      textsByLine[yPos] = []
+                    }
+                    textsByLine[yPos].push(text)
+                  })
+                  
+                  // Sort lines by Y position (top to bottom)
+                  const sortedLines = Object.keys(textsByLine)
+                    .sort((a, b) => parseFloat(a) - parseFloat(b))
+                  
+                  // Process each line
+                  sortedLines.forEach(yPos => {
+                    const lineTexts = textsByLine[yPos]
+                    // Sort texts within line by X position (left to right)
+                    lineTexts.sort((a: any, b: any) => a.x - b.x)
+                    
+                    // Extract text from each item on the line
+                    const lineContent = lineTexts
+                      .map((text: any) => {
+                        if (text.R && text.R.length > 0) {
+                          return text.R.map((run: any) => decodeURIComponent(run.T)).join('')
+                        }
+                        return ''
+                      })
+                      .filter((t: string) => t.length > 0)
+                    
+                    // Join with tabs to preserve table structure
+                    if (lineContent.length > 1) {
+                      // Likely a table row - use tabs to separate columns
+                      fullText += lineContent.join('\t') + '\n'
+                    } else if (lineContent.length === 1) {
+                      // Regular text line
+                      fullText += lineContent[0] + '\n'
+                    }
+                  })
+                  
+                  fullText += '\n' // Add extra newline between pages
+                  processedPages++
+                  pagesProcessedBeforeTimeout = processedPages // Update tracker for timeout handler
+                  partialText = fullText // Save partial text in case of timeout
+                  console.log(`Processed page ${pageIndex + 1}/${pdfData.Pages.length}, current text length: ${fullText.length}`)
                 }
               })
             }
             
-            console.log('PDF text extraction completed, text length:', fullText.length)
+            console.log(`PDF text extraction completed: ${processedPages} pages processed, total text length: ${fullText.length}`)
             
             if (fullText.trim().length === 0 || fullText.trim().length < 50) {
               // PDF appears to be scanned
@@ -297,8 +369,8 @@ export function extractBasicContractInfo(text: string) {
     amounts: /\$[\d,]+(?:\.\d{2})?/g,
     dates: /\b(?:\d{1,2}\/\d{1,2}\/\d{4}|\d{1,2}-\d{1,2}-\d{4}|\w+ \d{1,2},? \d{4})\b/g,
     emails: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
-    milestones: /milestone|deliverable|phase|stage/gi,
-    paymentTerms: /payment|invoice|billing|due/gi
+    milestones: /milestone|deliverable|phase|stage|scope of service|timing/gi,
+    paymentTerms: /payment|invoice|billing|due|professional fees|fee schedule|compensation/gi
   }
   
   return {

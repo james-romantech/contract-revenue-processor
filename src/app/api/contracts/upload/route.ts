@@ -10,21 +10,46 @@ export async function POST(request: NextRequest) {
     console.log('🕐 Cold start check - execution start time:', startTime)
     
     const formData = await request.formData()
-    const file = formData.get('file') as File
+    
+    // Check if text was pre-extracted client-side
+    const preExtractedText = formData.get('extractedText') as string | null
+    const fileName = formData.get('fileName') as string | null
+    const fileType = formData.get('fileType') as string | null
+    
+    let file: File | null = null
+    if (!preExtractedText) {
+      file = formData.get('file') as File
+    }
+    
     const useAI = true // Always use AI extraction
     
-    console.log('File:', file?.name, 'Size:', file?.size, 'Type:', file?.type)
+    // Use provided filename and type if text was pre-extracted
+    const actualFileName = fileName || file?.name || 'unknown.pdf'
+    const actualFileType = fileType || file?.type || 'application/pdf'
     
-    if (!file) {
-      console.log('No file provided')
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+    console.log('Processing:', actualFileName, 'Type:', actualFileType)
+    console.log('Pre-extracted text:', preExtractedText ? `${preExtractedText.length} chars` : 'No')
+    
+    if (!file && !preExtractedText) {
+      console.log('No file or extracted text provided')
+      return NextResponse.json({ error: 'No file or text provided' }, { status: 400 })
     }
 
-    // Extract text from the file
-    console.log('Extracting text from file...')
-    let extractedText
+    // Extract text from the file or use pre-extracted text
+    console.log('Preparing text for AI processing...')
+    let extractedText: string
     try {
-      extractedText = await extractTextFromFile(file)
+      if (preExtractedText) {
+        // Use client-side extracted text (PDFs processed in browser)
+        extractedText = preExtractedText
+        console.log('✅ Using client-side extracted text:', extractedText.length, 'characters')
+      } else if (file) {
+        // Server-side extraction (Word docs)
+        extractedText = await extractTextFromFile(file)
+        console.log('✅ Server-side extraction complete:', extractedText.length, 'characters')
+      } else {
+        throw new Error('No text or file to process')
+      }
       console.log('Extracted text length:', extractedText.length)
     } catch (textExtractionError) {
       console.error('Text extraction failed:', textExtractionError)
@@ -64,7 +89,7 @@ export async function POST(request: NextRequest) {
         // Create contract with AI-extracted data
         contractData = await prisma.contract.create({
           data: {
-            filename: file.name,
+            filename: actualFileName,
             originalText: extractedText,
             status: validation.isValid ? 'completed' : 'needs_review',
             contractValue: aiExtractedData.contractValue,

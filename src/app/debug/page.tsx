@@ -90,10 +90,21 @@ export default function DebugPage() {
               </div>
             )}
             
+            {/* Table Detection */}
+            {result.extraction?.extractedText?.includes('[TABLE DETECTED]') && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                <h2 className="text-lg font-semibold mb-4 text-yellow-800">📊 Tables Detected in Document</h2>
+                <p className="text-sm text-yellow-700">The document contains structured table data which has been preserved for AI extraction.</p>
+              </div>
+            )}
+            
             {/* Extracted Text */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-lg font-semibold mb-4">
                 Extracted Text ({result.extraction?.textLength || 0} characters)
+                {result.extraction?.extractedText?.includes('\t') && (
+                  <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Contains Tab-Separated Data</span>
+                )}
               </h2>
               <div className="bg-gray-50 p-4 rounded">
                 <p className="text-xs text-gray-600 mb-2">First 5000 characters:</p>
