@@ -1,84 +1,95 @@
 import mammoth from 'mammoth'
 
-// OCR function for scanned PDFs using AWS Textract
-async function performOCRWithTextract(buffer: Buffer): Promise<string> {
+// OCR function for scanned PDFs using Azure Computer Vision
+async function performOCRWithAzure(buffer: Buffer): Promise<string> {
   try {
-    console.log('Starting OCR with AWS Textract...')
+    console.log('Starting OCR with Azure Computer Vision...')
     
-    // Dynamic imports for serverless compatibility
-    const { TextractClient, AnalyzeDocumentCommand } = await import('@aws-sdk/client-textract')
+    // Check for Azure credentials
+    const endpoint = process.env.AZURE_COMPUTER_VISION_ENDPOINT
+    const apiKey = process.env.AZURE_COMPUTER_VISION_KEY
     
-    // Check for AWS credentials
-    const accessKeyId = process.env.AWS_ACCESS_KEY_ID
-    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY
-    const region = process.env.AWS_REGION || 'us-east-1'
-    
-    if (!accessKeyId || !secretAccessKey) {
-      throw new Error('AWS credentials not configured (AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY required)')
+    if (!endpoint || !apiKey) {
+      throw new Error('Azure Computer Vision credentials not configured')
     }
     
-    // Create Textract client
-    const client = new TextractClient({
-      region,
-      credentials: {
-        accessKeyId,
-        secretAccessKey
-      }
-    })
+    // Azure Computer Vision Read API for better document OCR
+    const readUrl = `${endpoint}/vision/v3.2/read/analyze`
     
-    console.log('Sending document to AWS Textract...')
+    console.log('Sending document to Azure Computer Vision...')
     
-    // Textract can process PDFs directly (up to 5MB synchronously)
-    const command = new AnalyzeDocumentCommand({
-      Document: {
-        Bytes: buffer
+    // Step 1: Submit the document for analysis
+    const analyzeResponse = await fetch(readUrl, {
+      method: 'POST',
+      headers: {
+        'Ocp-Apim-Subscription-Key': apiKey,
+        'Content-Type': 'application/octet-stream'
       },
-      FeatureTypes: ['TABLES', 'FORMS'] // Extract structured data too
+      body: buffer
     })
     
-    const result = await client.send(command)
+    if (!analyzeResponse.ok) {
+      const error = await analyzeResponse.text()
+      throw new Error(`Azure API error: ${analyzeResponse.status} - ${error}`)
+    }
     
-    let fullText = ''
+    // Get the operation location from headers
+    const operationLocation = analyzeResponse.headers.get('Operation-Location')
+    if (!operationLocation) {
+      throw new Error('No operation location returned from Azure')
+    }
     
-    // Process blocks returned by Textract
-    if (result.Blocks) {
-      console.log(`Textract returned ${result.Blocks.length} blocks`)
+    console.log('Document submitted, waiting for OCR to complete...')
+    
+    // Step 2: Poll for results
+    let result
+    let attempts = 0
+    const maxAttempts = 30 // 30 seconds max wait
+    
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second
       
-      // Extract all LINE blocks (actual text content)
-      const textBlocks = result.Blocks
-        .filter(block => block.BlockType === 'LINE')
-        .sort((a, b) => {
-          // Sort by vertical position to maintain reading order
-          const aTop = a.Geometry?.BoundingBox?.Top || 0
-          const bTop = b.Geometry?.BoundingBox?.Top || 0
-          return aTop - bTop
-        })
-      
-      textBlocks.forEach(block => {
-        if (block.Text) {
-          fullText += block.Text + ' '
+      const resultResponse = await fetch(operationLocation, {
+        headers: {
+          'Ocp-Apim-Subscription-Key': apiKey
         }
       })
       
-      // Also extract key-value pairs (great for contracts)
-      const keyValuePairs = result.Blocks
-        .filter(block => block.BlockType === 'KEY_VALUE_SET' && block.EntityTypes?.includes('KEY'))
+      if (!resultResponse.ok) {
+        throw new Error(`Failed to get OCR results: ${resultResponse.status}`)
+      }
       
-      if (keyValuePairs.length > 0) {
-        fullText += '\n\nExtracted Key Information:\n'
-        keyValuePairs.forEach(kvp => {
-          if (kvp.Text) {
-            fullText += kvp.Text + '\n'
-          }
-        })
+      result = await resultResponse.json()
+      
+      if (result.status === 'succeeded') {
+        break
+      } else if (result.status === 'failed') {
+        throw new Error('OCR processing failed')
+      }
+      
+      attempts++
+    }
+    
+    if (!result || result.status !== 'succeeded') {
+      throw new Error('OCR processing timed out')
+    }
+    
+    // Step 3: Extract text from results
+    let fullText = ''
+    
+    if (result.analyzeResult && result.analyzeResult.readResults) {
+      for (const page of result.analyzeResult.readResults) {
+        for (const line of page.lines || []) {
+          fullText += line.text + '\n'
+        }
       }
     }
     
-    console.log('AWS Textract OCR completed, total text length:', fullText.length)
+    console.log('Azure Computer Vision OCR completed, text length:', fullText.length)
     return fullText.trim()
     
   } catch (error) {
-    console.error('AWS Textract OCR failed:', error)
+    console.error('Azure Computer Vision OCR failed:', error)
     throw error
   }
 }
@@ -173,16 +184,16 @@ Upload date: ${new Date().toLocaleDateString()}`)
               // PDF appears to be scanned
               console.log('PDF appears to be scanned (no text extracted)')
               
-              // Check if AWS credentials are configured
-              const hasAWSCredentials = process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
+              // Check if Azure credentials are configured
+              const hasAzureCredentials = process.env.AZURE_COMPUTER_VISION_ENDPOINT && process.env.AZURE_COMPUTER_VISION_KEY
               
-              if (!hasAWSCredentials) {
+              if (!hasAzureCredentials) {
                 resolve(`This appears to be a scanned PDF that requires OCR.
 
 To enable OCR for scanned documents:
-1. Set up AWS Textract (see setup-aws-textract.md)
-2. Configure AWS credentials in Vercel
-3. Enable Textract in your AWS account
+1. Create a free Azure account
+2. Set up Computer Vision service (5,000 pages/month free)
+3. Add credentials to environment variables
 
 For now, please:
 • Convert the PDF to a Word document (.docx)
@@ -191,13 +202,13 @@ For now, please:
 
 File: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
               } else {
-                // Try OCR with AWS Textract
-                console.log('Attempting OCR with AWS Textract...')
+                // Try OCR with Azure Computer Vision
+                console.log('Attempting OCR with Azure Computer Vision...')
                 
-                performOCRWithTextract(buffer)
+                performOCRWithAzure(buffer)
                   .then(ocrText => {
                     if (ocrText.trim().length > 0) {
-                      console.log('AWS Textract OCR successful!')
+                      console.log('Azure Computer Vision OCR successful!')
                       resolve(ocrText)
                     } else {
                       resolve(`OCR completed but no text was extracted from the scanned PDF.
@@ -214,34 +225,15 @@ File: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
                     }
                   })
                   .catch(ocrError => {
-                    console.error('AWS Textract OCR failed:', ocrError)
-                    
-                    // Check for specific AWS errors
-                    if (ocrError.message?.includes('SubscriptionRequired')) {
-                      resolve(`AWS Textract requires additional setup in your AWS account.
-
-To enable Textract:
-1. Log into AWS Console
-2. Go to AWS Textract service
-3. Click "Get Started" or enable the service
-4. Textract may require explicit opt-in in some regions
-
-Alternative options:
-• Convert this PDF to a Word document (.docx)
-• Use a text-based PDF (not scanned)
-• Enable Textract in AWS Console, then try again
-
-File: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
-                    } else {
-                      resolve(`OCR processing failed: ${ocrError.message}
+                    console.error('Azure Computer Vision OCR failed:', ocrError)
+                    resolve(`OCR processing failed: ${ocrError.message}
 
 Please try:
 • Converting to a Word document (.docx)
 • Using a text-based PDF
-• Checking AWS credentials configuration
+• Checking Azure credentials configuration
 
 File: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
-                    }
                   })
               }
             } else {

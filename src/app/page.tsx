@@ -93,7 +93,7 @@ export default function Home() {
           <p className="text-gray-600 mb-6">
             AI-powered contract analysis for revenue recognition and milestone tracking
             <br />
-            <span className="text-sm text-blue-600">Supports both text-based and scanned PDFs with OCR</span>
+            <span className="text-sm text-blue-600">Supports Word docs, PDFs, and scanned contracts with OCR</span>
           </p>
           
         </div>

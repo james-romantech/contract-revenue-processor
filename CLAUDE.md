@@ -3,14 +3,14 @@
 A Next.js application for extracting revenue recognition data from contract documents using AI, with enhanced support for implicit contract language and scanned PDFs.
 
 ## Project Overview
-- **Technology Stack**: Next.js 15, TypeScript, Prisma, Tailwind CSS, OpenAI API, AWS Textract
+- **Technology Stack**: Next.js 15, TypeScript, Prisma, Tailwind CSS, OpenAI API, Azure Computer Vision
 - **Database**: PostgreSQL (configured in Prisma schema)
 - **Purpose**: Upload contract documents (including scanned PDFs), extract key financial data using AI, and calculate revenue recognition schedules
 
 ## Key Features Implemented
 - Enhanced file upload for contract documents (PDF, Word)
 - **Advanced AI-powered extraction** with implicit language understanding
-- **Professional OCR** using AWS Textract for scanned PDFs
+- **Professional OCR** using Azure Computer Vision for scanned PDFs (5,000 pages/month free)
 - Database storage of contracts, milestones, and revenue items
 - Revenue recognition calculations
 - Web interface for viewing and editing contract data

@@ -2,9 +2,8 @@ import { NextResponse } from 'next/server'
 
 export async function GET() {
   const openaiKey = process.env.OPENAI_KEY || process.env.OPENAI_API_KEY
-  const awsKey = process.env.AWS_ACCESS_KEY_ID
-  const awsSecret = process.env.AWS_SECRET_ACCESS_KEY
-  const awsRegion = process.env.AWS_REGION
+  const azureEndpoint = process.env.AZURE_COMPUTER_VISION_ENDPOINT
+  const azureKey = process.env.AZURE_COMPUTER_VISION_KEY
   
   return NextResponse.json({
     openai: {
@@ -17,11 +16,11 @@ export async function GET() {
         OPENAI_API_KEY: !!process.env.OPENAI_API_KEY
       }
     },
-    aws: {
-      hasAccessKey: !!awsKey,
-      hasSecretKey: !!awsSecret,
-      hasRegion: !!awsRegion,
-      region: awsRegion || 'not set'
+    azure: {
+      hasEndpoint: !!azureEndpoint,
+      hasKey: !!azureKey,
+      endpointFormat: azureEndpoint ? azureEndpoint.includes('cognitiveservices.azure.com') : false,
+      keyLength: azureKey ? azureKey.length : 0
     },
     environment: {
       NODE_ENV: process.env.NODE_ENV,
