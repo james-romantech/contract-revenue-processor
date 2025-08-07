@@ -26,15 +26,11 @@ export async function extractTextFromPDFClient(file: File): Promise<string> {
     // Dynamic import to avoid SSR issues
     const pdfjsLib = await import('pdfjs-dist')
     
-    // Set up worker - try multiple approaches
+    // Set up worker - use local file from public directory
     if (typeof window !== 'undefined') {
-      try {
-        // Option 1: Try to use the worker from unpkg CDN (more reliable)
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`
-      } catch (error) {
-        console.warn('Failed to set worker URL, PDF processing may be slower')
-        // Worker will run in main thread as fallback (slower but works)
-      }
+      // Use the worker file from public directory (no CORS issues)
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js'
+      console.log('PDF.js worker configured with local file')
     }
     
     const arrayBuffer = await file.arrayBuffer()
@@ -77,13 +73,9 @@ export async function processPDFInChunks(file: File, chunkSize: number = 2): Pro
   try {
     const pdfjsLib = await import('pdfjs-dist')
     
-    // Set up worker
+    // Set up worker - use local file from public directory
     if (typeof window !== 'undefined') {
-      try {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`
-      } catch (error) {
-        console.warn('Failed to set worker URL, PDF processing may be slower')
-      }
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js'
     }
     
     const arrayBuffer = await file.arrayBuffer()
