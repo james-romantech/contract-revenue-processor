@@ -49,7 +49,7 @@ Extract these specific fields:
 - Payment Terms: Payment schedule/terms summary
 - Deliverables: List of key deliverables/outputs
 
-Return ONLY a valid JSON object with this exact structure:
+IMPORTANT: Return ONLY a valid JSON object. Do not include any text before or after the JSON. Do not wrap in markdown code blocks. Return this exact structure:
 {
   "contractValue": number | null,
   "startDate": "YYYY-MM-DD" | null,
@@ -92,11 +92,11 @@ CONTRACT TEXT TO ANALYZE:`
 export async function extractContractDataWithAI(contractText: string): Promise<ExtractedContractData> {
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: addDateContext(EXTRACTION_PROMPT)
+          content: addDateContext(EXTRACTION_PROMPT) + "\n\nRemember: Output ONLY valid JSON, no other text."
         },
         {
           role: "user", 
@@ -105,6 +105,7 @@ export async function extractContractDataWithAI(contractText: string): Promise<E
       ],
       temperature: 0.1,
       max_tokens: 2000,
+      response_format: { type: "json_object" }
     })
 
     const response = completion.choices[0]?.message?.content
@@ -113,16 +114,43 @@ export async function extractContractDataWithAI(contractText: string): Promise<E
     }
 
     // Parse JSON response
+    console.log('Raw AI response:', response)
+    
     let extractedData: ExtractedContractData
     try {
+      // First, try direct JSON parsing
       extractedData = JSON.parse(response)
     } catch (parseError) {
-      // If JSON parsing fails, try to extract JSON from response
-      const jsonMatch = response.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        extractedData = JSON.parse(jsonMatch[0])
+      console.log('Direct JSON parsing failed, attempting to extract JSON from text...')
+      
+      // Try to extract JSON from markdown code blocks
+      const codeBlockMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/)
+      if (codeBlockMatch) {
+        console.log('Found JSON in code block')
+        extractedData = JSON.parse(codeBlockMatch[1])
       } else {
-        throw new Error('Could not parse AI response as JSON')
+        // Try to extract JSON object from response
+        const jsonMatch = response.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          console.log('Found JSON object in response')
+          extractedData = JSON.parse(jsonMatch[0])
+        } else {
+          console.error('No JSON found in response:', response)
+          // Return default structure if AI fails to return JSON
+          console.log('Using fallback extraction from text')
+          extractedData = {
+            contractValue: null,
+            startDate: null,
+            endDate: null,
+            clientName: null,
+            description: 'Contract uploaded but AI could not extract structured data',
+            milestones: [],
+            paymentTerms: null,
+            deliverables: [],
+            confidence: 0.1,
+            reasoning: 'AI response was not in expected JSON format'
+          }
+        }
       }
     }
 
