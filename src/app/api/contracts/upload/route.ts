@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { extractTextFromFile, extractBasicContractInfo } from '@/lib/pdf-processor'
+import { extractTextFromFile } from '@/lib/pdf-processor'
 import { extractContractDataWithAI, validateExtractedData } from '@/lib/ai-extractor'
 
 export async function POST(request: NextRequest) {
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
         })
 
       } catch (aiError) {
-        console.error('❌ AI extraction failed, falling back to basic extraction:', aiError)
+        console.error('❌ AI extraction failed:', aiError)
         console.error('AI Error details:', {
           message: aiError instanceof Error ? aiError.message : 'Unknown error',
           name: aiError instanceof Error ? aiError.name : 'Unknown',
@@ -116,9 +116,15 @@ export async function POST(request: NextRequest) {
           extractedTextPreview: extractedText.substring(0, 100)
         })
         
-        // Store the error for debugging
-        validation.warnings.push(`AI extraction failed: ${aiError instanceof Error ? aiError.message : 'Unknown error'}`)
-        // Fall through to basic extraction
+        // Return error instead of falling back
+        return NextResponse.json(
+          { 
+            error: 'AI extraction failed',
+            details: aiError instanceof Error ? aiError.message : 'Unknown error',
+            type: 'AIExtractionError'
+          }, 
+          { status: 500 }
+        )
       }
     } else {
       console.log('❌ OpenAI API key not configured properly:', {
@@ -133,47 +139,6 @@ export async function POST(request: NextRequest) {
         }, 
         { status: 500 }
       )
-    }
-
-    // Fallback to basic pattern matching extraction if AI wasn't used
-    if (!contractData) {
-      console.log('Using basic extraction...')
-      const basicInfo = extractBasicContractInfo(extractedText)
-      
-      console.log('Attempting database save...')
-      try {
-        contractData = await prisma.contract.create({
-          data: {
-            filename: file.name,
-            originalText: extractedText,
-            status: 'completed',
-            contractValue: basicInfo.amounts.length > 0 
-              ? parseFloat(basicInfo.amounts[0].replace(/[$,]/g, ''))
-              : null,
-          }
-        })
-        console.log('Database save successful:', contractData.id)
-      } catch (dbError) {
-        console.error('Database error:', dbError)
-        throw new Error(`Database save failed: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`)
-      }
-
-      return NextResponse.json({
-        success: true,
-        contract: {
-          id: contractData.id,
-          filename: contractData.filename,
-          status: contractData.status,
-          contractValue: contractData.contractValue,
-          extractedInfo: basicInfo,
-          aiExtractedData: null,
-          validation: { isValid: true, errors: [], warnings: ['AI extraction not available - using basic pattern matching'] }
-        },
-        debug: {
-          textLength: extractedText.length,
-          fallbackUsed: true
-        }
-      })
     }
     
   } catch (error) {

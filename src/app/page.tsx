@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { FileUpload } from '@/components/file-upload'
 import { ContractEditor } from '@/components/contract-editor'
 import { RevenueCalculator } from '@/components/revenue-calculator'
-import { Settings } from 'lucide-react'
 
 interface ContractData {
   id: string
