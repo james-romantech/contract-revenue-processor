@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     
     const formData = await request.formData()
     const file = formData.get('file') as File
-    const useAI = formData.get('useAI') === 'true'
+    const useAI = true // Always use AI extraction
     
     console.log('File:', file?.name, 'Size:', file?.size, 'Type:', file?.type)
     
@@ -42,29 +42,19 @@ export async function POST(request: NextRequest) {
     let validation = { isValid: true, errors: [], warnings: [] }
 
     const openaiKey = process.env.OPENAI_KEY || process.env.OPENAI_API_KEY
-    console.log('⚙️ AI extraction check:', {
-      useAI,
+    console.log('⚙️ OpenAI API key check:', {
       hasOpenAIKey: !!openaiKey,
       keyLength: openaiKey ? openaiKey.length : 0,
       isPlaceholder: openaiKey === 'your-openai-api-key-here',
       keyStart: openaiKey ? openaiKey.substring(0, 8) : 'none',
-      executionTime: Date.now() - startTime,
-      memoryUsage: process.memoryUsage(),
-      isColdStart: Date.now() - startTime > 1000,
-      nodeVersion: process.version,
-      platform: process.platform,
       envVars: {
         OPENAI_KEY: !!process.env.OPENAI_KEY,
-        OPENAI_API_KEY: !!process.env.OPENAI_API_KEY,
-        NODE_ENV: process.env.NODE_ENV,
-        VERCEL_ENV: process.env.VERCEL_ENV
-      },
-      allEnvKeys: Object.keys(process.env).filter(key => key.includes('OPENAI')),
-      userAgent: request.headers.get('user-agent')?.substring(0, 50)
+        OPENAI_API_KEY: !!process.env.OPENAI_API_KEY
+      }
     })
     
-    if (useAI && openaiKey && openaiKey !== 'your-openai-api-key-here') {
-      console.log('✅ AI extraction conditions met, proceeding with AI extraction...')
+    if (openaiKey && openaiKey !== 'your-openai-api-key-here') {
+      console.log('✅ OpenAI API key found, proceeding with AI extraction...')
       try {
         console.log('Calling extractContractDataWithAI with text length:', extractedText.length)
         const aiExtractedData = await extractContractDataWithAI(extractedText)
@@ -112,7 +102,6 @@ export async function POST(request: NextRequest) {
             validation
           },
           debug: {
-            usedAI: true,
             textLength: extractedText.length,
             aiSuccess: true
           }
@@ -132,11 +121,18 @@ export async function POST(request: NextRequest) {
         // Fall through to basic extraction
       }
     } else {
-      console.log('❌ AI extraction conditions not met:', {
-        useAI,
+      console.log('❌ OpenAI API key not configured properly:', {
         hasOpenAIKey: !!openaiKey,
         isNotPlaceholder: openaiKey !== 'your-openai-api-key-here'
       })
+      // Return error instead of falling back to basic extraction
+      return NextResponse.json(
+        { 
+          error: 'OpenAI API key not configured. Please add OPENAI_API_KEY to environment variables.',
+          details: 'AI extraction is required for contract processing.'
+        }, 
+        { status: 500 }
+      )
     }
 
     // Fallback to basic pattern matching extraction if AI wasn't used
@@ -174,13 +170,8 @@ export async function POST(request: NextRequest) {
           validation: { isValid: true, errors: [], warnings: ['AI extraction not available - using basic pattern matching'] }
         },
         debug: {
-          usedAI: false,
           textLength: extractedText.length,
-          aiConditions: {
-            useAI,
-            hasOpenAIKey: !!openaiKey,
-            keyNotPlaceholder: openaiKey !== 'your-openai-api-key-here'
-          }
+          fallbackUsed: true
         }
       })
     }

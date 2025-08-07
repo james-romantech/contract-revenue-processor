@@ -48,7 +48,6 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [contractData, setContractData] = useState<ContractData | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [useAI, setUseAI] = useState(true)
 
   const handleFileSelect = async (file: File) => {
     setIsProcessing(true)
@@ -56,10 +55,9 @@ export default function Home() {
     setContractData(null)
 
     try {
-      console.log('Uploading with AI extraction:', useAI)
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('useAI', useAI.toString())
+      formData.append('useAI', 'true') // Always use AI extraction
 
       const response = await fetch('/api/contracts/upload', {
         method: 'POST',
@@ -99,23 +97,6 @@ export default function Home() {
             <span className="text-sm text-blue-600">Supports both text-based and scanned PDFs with OCR</span>
           </p>
           
-          {/* AI Toggle */}
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <Settings className="h-4 w-4 text-gray-500" />
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={useAI}
-                onChange={(e) => {
-                  console.log('AI checkbox changed to:', e.target.checked)
-                  setUseAI(e.target.checked)
-                }}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                disabled={isProcessing}
-              />
-              Use AI Extraction (requires OpenAI API key) - Currently: {useAI ? 'ON' : 'OFF'}
-            </label>
-          </div>
         </div>
 
         <FileUpload onFileSelect={handleFileSelect} isProcessing={isProcessing} />
