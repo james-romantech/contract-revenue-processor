@@ -43,6 +43,12 @@ export async function POST(request: NextRequest) {
         // Use client-side extracted text (PDFs processed in browser)
         extractedText = preExtractedText
         console.log('✅ Using client-side extracted text:', extractedText.length, 'characters')
+        console.log('Text preview - First 200 chars:', extractedText.substring(0, 200))
+        console.log('Text preview - Last 200 chars:', extractedText.substring(extractedText.length - 200))
+        
+        // Check if we have all pages
+        const pageMarkers = extractedText.match(/--- Page \d+ ---/g)
+        console.log('Pages found in text:', pageMarkers ? pageMarkers.length : 0, pageMarkers)
       } else if (file) {
         // Server-side extraction (Word docs)
         extractedText = await extractTextFromFile(file)

@@ -25,6 +25,11 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
         // Process PDF client-side (no timeout!)
         setProcessingStatus('Processing PDF in browser (no timeout limits)...')
         const extractedText = await extractTextFromPDFClient(file)
+        console.log('Client extraction complete:', {
+          textLength: extractedText.length,
+          preview: extractedText.substring(0, 500),
+          lastChars: extractedText.substring(extractedText.length - 500)
+        })
         setProcessingStatus(`Extracted ${extractedText.length} characters from PDF`)
         onProcessComplete(extractedText, file)
       } else if (

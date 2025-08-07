@@ -58,6 +58,11 @@ export default function Home() {
       
       // If we have extracted text (from PDF), send it directly
       if (extractedText) {
+        console.log('Sending extracted text to server:', {
+          length: extractedText.length,
+          firstChars: extractedText.substring(0, 100),
+          lastChars: extractedText.substring(extractedText.length - 100)
+        })
         formData.append('extractedText', extractedText)
         formData.append('fileName', file.name)
         formData.append('fileType', file.type)

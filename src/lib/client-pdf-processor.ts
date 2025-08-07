@@ -39,6 +39,7 @@ export async function extractTextFromPDFClient(file: File): Promise<string> {
     console.log(`PDF has ${pdf.numPages} pages`)
     
     let fullText = ''
+    const pageTexts: string[] = []
     
     // Process all pages (no timeout in browser)
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
@@ -46,20 +47,28 @@ export async function extractTextFromPDFClient(file: File): Promise<string> {
       const page = await pdf.getPage(pageNum)
       const textContent = await page.getTextContent()
       
-      // Extract text with position info for table preservation
-      const pageText = textContent.items
-        .map((item: any) => {
-          if ('str' in item) {
-            return item.str
-          }
-          return ''
-        })
-        .join(' ')
+      // Extract text with better handling
+      let pageText = ''
+      let lastY = 0
       
-      fullText += `\n--- Page ${pageNum} ---\n${pageText}\n`
+      textContent.items.forEach((item: any) => {
+        if ('str' in item && item.str) {
+          // Add newline if Y position changed significantly (new line)
+          if (lastY !== 0 && Math.abs(item.transform[5] - lastY) > 5) {
+            pageText += '\n'
+          }
+          pageText += item.str + ' '
+          lastY = item.transform[5]
+        }
+      })
+      
+      pageTexts.push(pageText.trim())
+      console.log(`Page ${pageNum} extracted: ${pageText.length} characters`)
+      fullText += `\n\n--- Page ${pageNum} ---\n${pageText}\n`
     }
     
     console.log(`Client-side extraction complete: ${fullText.length} characters from ${pdf.numPages} pages`)
+    console.log('Page character counts:', pageTexts.map(p => p.length))
     return fullText
     
   } catch (error) {
