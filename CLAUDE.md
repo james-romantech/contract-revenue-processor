@@ -3,14 +3,14 @@
 A Next.js application for extracting revenue recognition data from contract documents using AI, with enhanced support for implicit contract language and scanned PDFs.
 
 ## Project Overview
-- **Technology Stack**: Next.js 15, TypeScript, Prisma, Tailwind CSS, OpenAI API, Google Cloud Vision API
+- **Technology Stack**: Next.js 15, TypeScript, Prisma, Tailwind CSS, OpenAI API, AWS Textract
 - **Database**: PostgreSQL (configured in Prisma schema)
 - **Purpose**: Upload contract documents (including scanned PDFs), extract key financial data using AI, and calculate revenue recognition schedules
 
 ## Key Features Implemented
 - Enhanced file upload for contract documents (PDF, Word)
 - **Advanced AI-powered extraction** with implicit language understanding
-- **Professional OCR** using Google Cloud Vision API for scanned PDFs
+- **Professional OCR** using AWS Textract for scanned PDFs
 - Database storage of contracts, milestones, and revenue items
 - Revenue recognition calculations
 - Web interface for viewing and editing contract data
@@ -41,11 +41,11 @@ The AI extraction has been significantly enhanced to handle **implicit contract 
 - Fast and reliable for digitally created PDFs
 
 ### 2. Scanned PDFs (OCR)
-- **Google Cloud Vision API** integration
+- **AWS Textract** integration
 - High-accuracy OCR for scanned contracts
-- Handles complex layouts, tables, multi-column text
-- Processes up to 10 pages per document
-- Cost: ~$1.50 per 1000 pages (first 1000/month free)
+- Handles complex layouts, tables, forms, and key-value pairs
+- Processes documents up to 5MB synchronously
+- Cost: ~$1.50 per 1000 pages
 
 ### 3. Word Documents
 - Full text extraction using mammoth
@@ -75,22 +75,27 @@ The AI extraction has been significantly enhanced to handle **implicit contract 
 
 ### Vercel Production Environment:
 1. **OPENAI_API_KEY**: Your OpenAI API key (starts with sk-...)
-2. **GOOGLE_APPLICATION_CREDENTIALS_JSON**: Full JSON content of Google Cloud service account key
-3. **DATABASE_URL**: PostgreSQL connection string
+2. **AWS_ACCESS_KEY_ID**: AWS IAM access key for Textract
+3. **AWS_SECRET_ACCESS_KEY**: AWS IAM secret key for Textract
+4. **AWS_REGION**: AWS region (default: us-east-1)
+5. **DATABASE_URL**: PostgreSQL connection string
 
 ### Local Development (.env):
 ```env
 DATABASE_URL="your-local-postgres-url"
 OPENAI_API_KEY="your-openai-api-key-here"
-GOOGLE_APPLICATION_CREDENTIALS_JSON='{"type": "service_account", ...}'
+AWS_ACCESS_KEY_ID="your-aws-access-key"
+AWS_SECRET_ACCESS_KEY="your-aws-secret-key"
+AWS_REGION="us-east-1"
 ```
 
 ## Current Deployment Status
 - **Platform**: Vercel
-- **URL**: https://contract-revenue-processor-7tvz.vercel.app/
+- **URL**: https://contractsync.ai/
+- **Custom Domain**: contractsync.ai (active)
 - **Status**: Live and accessible
 - **Features Working**: Word document processing with enhanced AI extraction
-- **In Progress**: Google Cloud Vision API setup for scanned PDF OCR
+- **OCR Solution**: AWS Textract configured and ready
 
 ## Serverless Architecture Notes
 
@@ -101,10 +106,10 @@ GOOGLE_APPLICATION_CREDENTIALS_JSON='{"type": "service_account", ...}'
 - **Canvas/DOM Dependencies**: Many OCR libraries don't work in Node.js serverless
 
 ### Solutions Implemented:
-- **Google Cloud Vision API**: Serverless-compatible professional OCR
+- **AWS Textract**: Serverless-compatible professional OCR
 - **Dynamic Imports**: Prevent build-time dependency issues
 - **Graceful Error Handling**: Fallbacks for processing failures
-- **Resource Optimization**: Limited page processing to prevent timeouts
+- **Resource Optimization**: Synchronous processing for documents under 5MB
 
 ## Troubleshooting
 
@@ -115,7 +120,7 @@ GOOGLE_APPLICATION_CREDENTIALS_JSON='{"type": "service_account", ...}'
 
 ### PDF Processing Issues:
 1. **Text-based PDFs**: Should work with pdf2json extraction
-2. **Scanned PDFs**: Requires Google Cloud Vision API setup
+2. **Scanned PDFs**: Uses AWS Textract for OCR
 3. **Fallback**: Convert to Word document for guaranteed processing
 
 ### Serverless Function Issues:
@@ -123,42 +128,45 @@ GOOGLE_APPLICATION_CREDENTIALS_JSON='{"type": "service_account", ...}'
 - Monitor memory usage in function execution
 - Consider upgrading Vercel plan for longer timeouts
 
-## Google Cloud Vision API Setup
+## AWS Textract Setup
 
 ### Required Steps:
-1. **Create Google Cloud Project**
-   - Go to https://console.cloud.google.com/
-   - Create new project or select existing
-   - Enable Vision API
+1. **Create AWS Account**
+   - Go to https://aws.amazon.com/
+   - Sign up for free tier (6 months free for new accounts)
+   - Credit card required but won't be charged for light usage
 
-2. **Create Service Account**
-   - IAM & Admin → Service Accounts
-   - Create Service Account
-   - Assign "Vision API User" role
-   - Create and download JSON key
+2. **Create IAM User**
+   - Go to IAM in AWS Console
+   - Create new user: `contractsync-textract`
+   - Attach policy: `AmazonTextractFullAccess`
+   - Create access keys for programmatic access
 
 3. **Configure Vercel**
-   - Add environment variable: `GOOGLE_APPLICATION_CREDENTIALS_JSON`
-   - Paste entire JSON file contents as value
+   - Add environment variables:
+     - `AWS_ACCESS_KEY_ID`: Your access key
+     - `AWS_SECRET_ACCESS_KEY`: Your secret key
+     - `AWS_REGION`: us-east-1 (or your preferred region)
 
 ### Pricing:
-- First 1000 pages/month: FREE
-- Additional pages: ~$1.50 per 1000 pages
-- Excellent value for business contract processing
+- First 1,000 pages/month: $1.50
+- Next 9,000 pages: $0.60 per 1,000
+- Typical usage: ~$2-5/month for small business
 
 ## Next Steps
-1. **Complete Google Cloud Vision API setup** for scanned PDF OCR
-2. Test OCR functionality with sample scanned contracts
+1. **Test AWS Textract OCR** with sample scanned contracts
+2. Monitor AWS usage and costs in AWS Console
 3. Enhance UI to display extracted contract data more clearly
 4. Implement contract editing and review interface
 5. Add revenue recognition calculations display
 6. Create contract management dashboard
 7. Add data export capabilities
+8. Consider S3 integration for large files (>5MB)
 
 ## Development Session Notes
 - **Enhanced AI extraction working perfectly** with Word documents
 - **Serverless compatibility issues resolved** using appropriate libraries
-- **Google Cloud Vision API implemented** for professional OCR
+- **AWS Textract implemented** for professional OCR
 - **Comprehensive error handling** and fallback mechanisms in place
 
 ## Recent Updates
@@ -340,9 +348,59 @@ GOOGLE_APPLICATION_CREDENTIALS_JSON='{"type": "service_account", ...}'
    - Test with both cold and warm starts
 
 ### Session Code Statistics
-- **Total Commits**: ~30
+- **Total Commits**: ~35
 - **Files Modified**: 15+
 - **Features Added**: OCR, enhanced AI, custom domain, debugging tools
-- **Libraries Tested**: pdf-parse, pdfjs-dist, pdf2json, tesseract.js, pdf-poppler, sharp, @google-cloud/vision
-- **Libraries That Work in Serverless**: pdf2json, mammoth, openai
+- **Libraries Tested**: pdf-parse, pdfjs-dist, pdf2json, tesseract.js, pdf-poppler, sharp, @google-cloud/vision, @aws-sdk/client-textract
+- **Libraries That Work in Serverless**: pdf2json, mammoth, openai, @aws-sdk/client-textract
 - **Libraries That Don't Work**: pdf-parse, tesseract.js, canvas-dependent libraries
+
+## Latest Session: AWS Textract Migration
+
+### Background
+After Google Cloud Vision API was blocked by organization policy (`iam.disableServiceAccountKeyCreation`), we migrated to AWS Textract for OCR capabilities.
+
+### AWS Textract Implementation
+1. **Packages Added**:
+   - `@aws-sdk/client-textract`: AWS SDK for Textract
+   - `@aws-sdk/client-s3`: For potential future S3 integration
+
+2. **Features Implemented**:
+   - Synchronous document processing (up to 5MB)
+   - Table and form extraction (TABLES, FORMS features)
+   - Key-value pair extraction for contracts
+   - Maintains reading order through geometry sorting
+   - Comprehensive error handling with fallbacks
+
+3. **Environment Variables Required**:
+   - `AWS_ACCESS_KEY_ID`: IAM user access key
+   - `AWS_SECRET_ACCESS_KEY`: IAM user secret key
+   - `AWS_REGION`: Region for Textract (default: us-east-1)
+
+4. **Setup Documentation**:
+   - Created `setup-aws-textract.md` with step-by-step guide
+   - 10-minute setup process
+   - Clear IAM permissions (AmazonTextractFullAccess)
+   - No organization policy restrictions like Google Cloud
+
+### Current Status (As of Latest Deployment)
+- ✅ AWS Textract code fully implemented
+- ✅ Environment variables configured in Vercel
+- ✅ User upgraded Vercel plan for additional resources
+- ✅ Fresh deployment triggered with commit 3f3d4dd
+- ⏳ Awaiting deployment completion and testing
+
+### Advantages of AWS Textract over Google Vision
+1. **No Service Account Key Issues**: Uses simple IAM credentials
+2. **Better Contract Support**: Specialized in forms and key-value extraction
+3. **Simpler Setup**: No JSON key file management
+4. **Direct PDF Support**: Processes PDFs without image conversion
+5. **Structured Data Extraction**: Returns tables and forms as structured data
+
+### Testing Plan
+Once deployment completes:
+1. Upload a scanned PDF contract to contractsync.ai
+2. Ensure "Use AI Extraction" is checked
+3. Verify OCR text extraction in logs
+4. Confirm AI extraction works on OCR'd text
+5. Monitor AWS CloudWatch for usage metrics
