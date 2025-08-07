@@ -20,7 +20,7 @@ interface RevenueCalculatorProps {
 }
 
 export function RevenueCalculator({ contractData }: RevenueCalculatorProps) {
-  const [allocationType, setAllocationType] = useState<'straight-line' | 'milestone-based' | 'percentage-complete' | 'billed-on-achievement'>('straight-line')
+  const [allocationType, setAllocationType] = useState<'straight-line' | 'milestone-based' | 'percentage-complete' | 'billed-basis'>('straight-line')
   const [revenueAllocations, setRevenueAllocations] = useState<RevenueAllocation[]>([])
   const [actualRevenue, setActualRevenue] = useState(0)
   const [forwardBook, setForwardBook] = useState({
@@ -147,19 +147,19 @@ export function RevenueCalculator({ contractData }: RevenueCalculatorProps) {
           </button>
           
           <button
-            onClick={() => setAllocationType('billed-on-achievement')}
+            onClick={() => setAllocationType('billed-basis')}
             className={`p-3 text-left border rounded-lg transition-colors ${
-              allocationType === 'billed-on-achievement' 
+              allocationType === 'billed-basis' 
                 ? 'border-blue-500 bg-blue-50 text-blue-700' 
                 : 'border-gray-300 hover:border-gray-400'
             }`}
             disabled={!contractData.aiExtractedData?.milestones.length}
           >
-            <div className="font-medium">Billed on Achievement</div>
+            <div className="font-medium">Billed-Basis</div>
             <div className="text-sm text-gray-600">
               {contractData.aiExtractedData?.milestones.length ? 
-                'Revenue when milestones achieved' :
-                'No milestones detected'
+                `Revenue on billing dates (${contractData.aiExtractedData.milestones.length} payments)` :
+                'No billing milestones detected'
               }
             </div>
           </button>

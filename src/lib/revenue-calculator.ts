@@ -1,4 +1,4 @@
-import { addMonths, format, parseISO, startOfMonth } from 'date-fns'
+import { addMonths } from 'date-fns'
 
 export interface RevenueAllocation {
   amount: number
@@ -11,7 +11,7 @@ export interface RevenueCalculationParams {
   totalValue: number
   startDate: Date
   endDate: Date
-  allocationType: 'straight-line' | 'milestone-based' | 'percentage-complete' | 'billed-on-achievement'
+  allocationType: 'straight-line' | 'milestone-based' | 'percentage-complete' | 'billed-basis'
   milestones?: Array<{
     name: string
     amount: number
@@ -32,8 +32,8 @@ export function calculateRevenueAllocations(params: RevenueCalculationParams): R
     case 'percentage-complete':
       return calculatePercentageCompleteRevenue(totalValue, startDate, endDate)
       
-    case 'billed-on-achievement':
-      return calculateBilledOnAchievementRevenue(milestones)
+    case 'billed-basis':
+      return calculateBilledBasisRevenue(milestones)
       
     default:
       return calculateStraightLineRevenue(totalValue, startDate, endDate)
@@ -49,7 +49,8 @@ function calculateStraightLineRevenue(
   const totalMonths = getMonthsBetween(startDate, endDate)
   const monthlyAmount = totalValue / totalMonths
   
-  let currentDate = startOfMonth(startDate)
+  // Use the actual start date's month, not startOfMonth which might go backwards
+  let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1)
   
   for (let i = 0; i < totalMonths; i++) {
     allocations.push({
@@ -82,7 +83,8 @@ function calculatePercentageCompleteRevenue(
 ): RevenueAllocation[] {
   const allocations: RevenueAllocation[] = []
   const totalMonths = getMonthsBetween(startDate, endDate)
-  let currentDate = startOfMonth(startDate)
+  // Use the actual start date's month, not startOfMonth which might go backwards
+  let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1)
   
   for (let i = 0; i < totalMonths; i++) {
     const percentageComplete = ((i + 1) / totalMonths) * 100
@@ -102,14 +104,14 @@ function calculatePercentageCompleteRevenue(
   return allocations
 }
 
-function calculateBilledOnAchievementRevenue(
+function calculateBilledBasisRevenue(
   milestones: Array<{ name: string; amount: number; dueDate: Date }>
 ): RevenueAllocation[] {
-  return milestones.map(milestone => ({
+  return milestones.map((milestone, index) => ({
     amount: milestone.amount,
     recognitionDate: milestone.dueDate,
     type: 'billed' as const,
-    description: `Billed on achievement: ${milestone.name}`
+    description: `Billed amount ${index + 1}: ${milestone.name}`
   }))
 }
 
