@@ -75,27 +75,32 @@ The AI extraction has been significantly enhanced to handle **implicit contract 
 
 ### Vercel Production Environment:
 1. **OPENAI_API_KEY**: Your OpenAI API key (starts with sk-...)
-2. **AWS_ACCESS_KEY_ID**: AWS IAM access key for Textract
-3. **AWS_SECRET_ACCESS_KEY**: AWS IAM secret key for Textract
-4. **AWS_REGION**: AWS region (default: us-east-1)
-5. **DATABASE_URL**: PostgreSQL connection string
+2. **AZURE_COMPUTER_VISION_KEY**: Azure API key for OCR
+3. **AZURE_COMPUTER_VISION_ENDPOINT**: Azure endpoint URL
+4. **DATABASE_URL**: PostgreSQL connection string
 
 ### Local Development (.env):
 ```env
 DATABASE_URL="your-local-postgres-url"
 OPENAI_API_KEY="your-openai-api-key-here"
-AWS_ACCESS_KEY_ID="your-aws-access-key"
-AWS_SECRET_ACCESS_KEY="your-aws-secret-key"
-AWS_REGION="us-east-1"
+AZURE_COMPUTER_VISION_KEY="your-azure-key"
+AZURE_COMPUTER_VISION_ENDPOINT="https://your-resource.cognitiveservices.azure.com/"
 ```
 
 ## Current Deployment Status
 - **Platform**: Vercel
 - **URL**: https://contractsync.ai/
 - **Custom Domain**: contractsync.ai (active)
-- **Status**: Live and accessible
-- **Features Working**: Word document processing with enhanced AI extraction
-- **OCR Solution**: AWS Textract configured and ready
+- **Status**: Live and fully functional
+- **OCR Solution**: Azure Computer Vision (5,000 pages/month free)
+- **AI Model**: GPT-4o-mini for fast, accurate extraction
+- **Features Working**: 
+  - Word document processing
+  - Text-based PDF extraction
+  - Scanned PDF OCR
+  - AI contract analysis
+  - Revenue recognition calculations
+  - Debug tools at /debug
 
 ## Serverless Architecture Notes
 
@@ -355,52 +360,150 @@ AWS_REGION="us-east-1"
 - **Libraries That Work in Serverless**: pdf2json, mammoth, openai, @aws-sdk/client-textract
 - **Libraries That Don't Work**: pdf-parse, tesseract.js, canvas-dependent libraries
 
-## Latest Session: AWS Textract Migration
+## Latest Session Updates (January 2025)
 
-### Background
-After Google Cloud Vision API was blocked by organization policy (`iam.disableServiceAccountKeyCreation`), we migrated to AWS Textract for OCR capabilities.
+### 1. Azure Computer Vision Migration (Completed)
+After discovering AWS Textract requires payment (no free tier), migrated to Azure Computer Vision:
 
-### AWS Textract Implementation
-1. **Packages Added**:
-   - `@aws-sdk/client-textract`: AWS SDK for Textract
-   - `@aws-sdk/client-s3`: For potential future S3 integration
+#### Azure Implementation:
+- **Package**: `@azure/cognitiveservices-computervision`
+- **Free Tier**: 5,000 pages/month free (F0 tier)
+- **Features**: High-accuracy OCR, table extraction, 70+ languages
+- **Setup**: Simple API key configuration (no complex IAM)
+- **Documentation**: Created `setup-azure-vision.md`
 
-2. **Features Implemented**:
-   - Synchronous document processing (up to 5MB)
-   - Table and form extraction (TABLES, FORMS features)
-   - Key-value pair extraction for contracts
-   - Maintains reading order through geometry sorting
-   - Comprehensive error handling with fallbacks
+#### Environment Variables:
+```
+AZURE_COMPUTER_VISION_KEY=<your-key>
+AZURE_COMPUTER_VISION_ENDPOINT=<your-endpoint>
+```
 
-3. **Environment Variables Required**:
-   - `AWS_ACCESS_KEY_ID`: IAM user access key
-   - `AWS_SECRET_ACCESS_KEY`: IAM user secret key
-   - `AWS_REGION`: Region for Textract (default: us-east-1)
+### 2. AI Extraction Always Enabled
+- Removed the "Use AI Extraction" checkbox
+- AI extraction is now always on by default
+- No fallback to basic pattern matching
+- Cleaner, more predictable behavior
 
-4. **Setup Documentation**:
-   - Created `setup-aws-textract.md` with step-by-step guide
-   - 10-minute setup process
-   - Clear IAM permissions (AmazonTextractFullAccess)
-   - No organization policy restrictions like Google Cloud
+### 3. Revenue Calculator Enhancements
 
-### Current Status (As of Latest Deployment)
-- ✅ AWS Textract code fully implemented
-- ✅ Environment variables configured in Vercel
-- ✅ User upgraded Vercel plan for additional resources
-- ✅ Fresh deployment triggered with commit 3f3d4dd
-- ⏳ Awaiting deployment completion and testing
+#### Date Standardization (End-of-Month):
+- All dates now use end-of-month convention
+- "August 2025" → "2025-08-31" (not 08-01)
+- Fixed month counting: Aug 1 to Dec 31 = 5 months
+- Proper accounting convention compliance
 
-### Advantages of AWS Textract over Google Vision
-1. **No Service Account Key Issues**: Uses simple IAM credentials
-2. **Better Contract Support**: Specialized in forms and key-value extraction
-3. **Simpler Setup**: No JSON key file management
-4. **Direct PDF Support**: Processes PDFs without image conversion
-5. **Structured Data Extraction**: Returns tables and forms as structured data
+#### Separate Work vs Billing Periods:
+- **Work Period**: When services are performed (for straight-line revenue)
+- **Billing Period**: When payments are made (for billed-basis revenue)
+- AI extracts both date ranges separately
+- Revenue calculator uses appropriate dates for each method
 
-### Testing Plan
-Once deployment completes:
-1. Upload a scanned PDF contract to contractsync.ai
-2. Ensure "Use AI Extraction" is checked
-3. Verify OCR text extraction in logs
-4. Confirm AI extraction works on OCR'd text
-5. Monitor AWS CloudWatch for usage metrics
+#### Revenue Recognition Methods:
+1. **Straight-Line**: Even distribution over work period
+2. **Billed-Basis**: Revenue on actual billing dates
+3. **Milestone-Based**: Revenue at specific milestones
+4. **Percentage Complete**: Progressive recognition
+
+Example Contract:
+- Work: Aug-Dec 2025 (5 months)
+- Billing: Aug-Nov 2025 (4 payments)
+- Straight-line: $20k/month for 5 months
+- Billed-basis: $25k/month for 4 months
+
+### 4. Debug Tools Added
+- **Debug Page**: `/debug` - Test PDF extraction and see raw output
+- **Debug API**: `/api/debug-extraction` - Detailed extraction analysis
+- Shows exactly what text is extracted from PDFs
+- Displays AI extraction results
+- Helps identify table parsing issues
+
+### 5. JSON Parsing Improvements
+- Added `response_format: { type: "json_object" }` to OpenAI calls
+- Switched to `gpt-4o-mini` for faster, cheaper responses
+- Better error handling for malformed JSON
+- Multiple fallback strategies
+
+### 6. Table Extraction Support
+- Enhanced AI prompt to handle tables in contracts
+- Looks for columnar data, pipes, tabs
+- Extracts payment schedules from tables
+- Better handling of structured contract data
+
+## Key Technical Decisions
+
+### OCR Solution Evolution:
+1. **Tesseract.js** ❌ - Doesn't work in serverless (Canvas dependencies)
+2. **Google Cloud Vision** ❌ - Blocked by organization policy
+3. **AWS Textract** ❌ - No free tier (requires payment)
+4. **Azure Computer Vision** ✅ - 5,000 pages/month free, works perfectly
+
+### Why Azure Computer Vision Won:
+- Generous free tier (5,000 transactions/month)
+- Simple API key setup (no complex IAM)
+- Excellent OCR accuracy
+- Handles tables and forms well
+- Works in serverless environment
+- Quick setup (10 minutes)
+
+### Contract Data Extraction Strategy:
+1. **Text Extraction**: pdf2json for PDFs, mammoth for Word docs
+2. **OCR if needed**: Azure Computer Vision for scanned documents
+3. **AI Analysis**: GPT-4o-mini with structured JSON output
+4. **Validation**: Comprehensive error handling and fallbacks
+
+## Current Capabilities
+
+### What Works Perfectly:
+- ✅ Word documents (.docx) - 100% reliable
+- ✅ Text-based PDFs - Direct text extraction
+- ✅ Scanned PDFs - OCR via Azure Computer Vision
+- ✅ Implicit date parsing - "August through December" understood
+- ✅ Table extraction - Parses columnar contract data
+- ✅ Revenue calculations - Multiple recognition methods
+- ✅ Custom domain - contractsync.ai
+
+### Revenue Recognition Features:
+- **Straight-Line**: Even distribution over work period
+- **Billed-Basis**: Recognition on invoice dates
+- **Milestone-Based**: Recognition at deliverables
+- **Percentage Complete**: Progressive recognition
+- **Separate Date Tracking**: Work period vs billing period
+
+### AI Extraction Intelligence:
+- Understands implicit contract language
+- Extracts dates from natural language
+- Calculates totals from payment schedules
+- Identifies milestones and deliverables
+- Separates work periods from billing periods
+- Handles tables and structured data
+
+## Usage Instructions
+
+### For Users:
+1. Visit https://contractsync.ai/
+2. Upload contract (PDF or Word)
+3. AI automatically extracts key terms
+4. Review extracted data in Contract Editor
+5. Use Revenue Calculator for recognition schedules
+6. Choose between straight-line or billed-basis
+
+### For Debugging:
+1. Visit https://contractsync.ai/debug
+2. Upload problematic contract
+3. View raw extracted text
+4. See AI extraction results
+5. Share output for improvements
+
+## Known Limitations
+- PDFs over 5MB need to be split for OCR
+- Complex multi-column layouts may need adjustment
+- Handwritten text not supported
+- Best with English contracts (other languages work but less tested)
+
+## Future Enhancements
+- Export to Excel/CSV
+- Multi-contract dashboard
+- Automated revenue journal entries
+- Contract comparison tools
+- Email notifications for milestones
+- API for integration with accounting systems
