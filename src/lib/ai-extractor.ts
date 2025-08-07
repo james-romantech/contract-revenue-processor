@@ -33,6 +33,8 @@ Your task is to:
 2. Infer payment schedules from billing descriptions
 3. Calculate milestone amounts and dates from payment terms
 4. Extract total contract values even when stated indirectly
+5. Parse tables and structured data (look for columnar data, pipes |, tabs, or aligned text)
+6. Extract information from payment schedule tables, service tables, and deliverable tables
 
 DATE CONVENTIONS:
 - For month-only references, use END of month dates
