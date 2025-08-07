@@ -88,7 +88,7 @@ export default function Home() {
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            ContractSync AI
+            ContractSync AI v2.0
           </h1>
           <p className="text-gray-600 mb-6">
             AI-powered contract analysis for revenue recognition and milestone tracking
