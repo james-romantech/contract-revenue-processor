@@ -1,4 +1,4 @@
-import { addMonths } from 'date-fns'
+import { addMonths, endOfMonth, startOfMonth, differenceInMonths } from 'date-fns'
 
 export interface RevenueAllocation {
   amount: number
@@ -49,8 +49,8 @@ function calculateStraightLineRevenue(
   const totalMonths = getMonthsBetween(startDate, endDate)
   const monthlyAmount = totalValue / totalMonths
   
-  // Use the actual start date's month, not startOfMonth which might go backwards
-  let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1)
+  // Start from the end of the first month
+  let currentDate = endOfMonth(startDate)
   
   for (let i = 0; i < totalMonths; i++) {
     allocations.push({
@@ -59,7 +59,8 @@ function calculateStraightLineRevenue(
       type: 'monthly',
       description: `Month ${i + 1} of ${totalMonths} - Straight-line allocation`
     })
-    currentDate = addMonths(currentDate, 1)
+    // Move to the end of the next month
+    currentDate = endOfMonth(addMonths(currentDate, 1))
   }
   
   return allocations
@@ -83,8 +84,8 @@ function calculatePercentageCompleteRevenue(
 ): RevenueAllocation[] {
   const allocations: RevenueAllocation[] = []
   const totalMonths = getMonthsBetween(startDate, endDate)
-  // Use the actual start date's month, not startOfMonth which might go backwards
-  let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1)
+  // Start from the end of the first month
+  let currentDate = endOfMonth(startDate)
   
   for (let i = 0; i < totalMonths; i++) {
     const percentageComplete = ((i + 1) / totalMonths) * 100
@@ -98,7 +99,8 @@ function calculatePercentageCompleteRevenue(
       type: 'percentage',
       description: `${percentageComplete.toFixed(1)}% complete`
     })
-    currentDate = addMonths(currentDate, 1)
+    // Move to the end of the next month
+    currentDate = endOfMonth(addMonths(currentDate, 1))
   }
   
   return allocations
@@ -116,16 +118,11 @@ function calculateBilledBasisRevenue(
 }
 
 function getMonthsBetween(startDate: Date, endDate: Date): number {
-  const start = new Date(startDate.getFullYear(), startDate.getMonth())
-  const end = new Date(endDate.getFullYear(), endDate.getMonth())
-  
-  let months = 0
-  let current = new Date(start)
-  
-  while (current <= end) {
-    months++
-    current.setMonth(current.getMonth() + 1)
-  }
+  // Count the number of months inclusively
+  // Aug 1 to Dec 31 = Aug, Sep, Oct, Nov, Dec = 5 months
+  const startMonth = startOfMonth(startDate)
+  const endMonth = startOfMonth(endDate)
+  const months = differenceInMonths(endMonth, startMonth) + 1
   
   return Math.max(1, months)
 }

@@ -34,10 +34,16 @@ Your task is to:
 3. Calculate milestone amounts and dates from payment terms
 4. Extract total contract values even when stated indirectly
 
+DATE CONVENTIONS:
+- For month-only references, use END of month dates
+- "August 2025" → "2025-08-31" (not 08-01)
+- "August through December 2025" → startDate: "2025-08-31", endDate: "2025-12-31"
+- Milestones should use end-of-month dates for monthly payments
+
 EXAMPLES:
-- "support required during August, September, October 2025" → startDate: "2025-08-01", endDate: "2025-10-31"
-- "four monthly installments of $25,000 beginning August 2025" → creates 4 milestones from Aug-Nov 2025
-- "monthly rate continues beyond December 6, 2025" → endDate could extend past "2025-12-06"
+- "support required during August, September, October 2025" → startDate: "2025-08-31", endDate: "2025-10-31"
+- "four monthly installments of $25,000 beginning August 2025" → creates 4 milestones: Aug 31, Sep 30, Oct 31, Nov 30
+- "August through December 2025" → startDate: "2025-08-31", endDate: "2025-12-31"
 
 Extract these specific fields:
 - Contract Value: Total monetary value (calculate from payments if needed)
