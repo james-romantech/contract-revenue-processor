@@ -4,19 +4,35 @@ import mammoth from 'mammoth'
 async function performOCRWithAzure(buffer: Buffer): Promise<string> {
   try {
     console.log('Starting OCR with Azure Computer Vision...')
+    console.log('Buffer size:', buffer.length, 'bytes')
     
     // Check for Azure credentials
     const endpoint = process.env.AZURE_COMPUTER_VISION_ENDPOINT
     const apiKey = process.env.AZURE_COMPUTER_VISION_KEY
     
+    console.log('Azure credential check:', {
+      hasEndpoint: !!endpoint,
+      endpointLength: endpoint?.length || 0,
+      endpointFormat: endpoint?.includes('cognitiveservices.azure.com') || false,
+      hasKey: !!apiKey,
+      keyLength: apiKey?.length || 0
+    })
+    
     if (!endpoint || !apiKey) {
+      console.error('Azure credentials missing:', { endpoint: !!endpoint, apiKey: !!apiKey })
       throw new Error('Azure Computer Vision credentials not configured')
     }
     
+    // Clean up endpoint URL
+    const cleanEndpoint = endpoint.replace(/\/+$/, '') // Remove trailing slashes
+    console.log('Using endpoint:', cleanEndpoint)
+    
     // Azure Computer Vision Read API for better document OCR
-    const readUrl = `${endpoint}/vision/v3.2/read/analyze`
+    const readUrl = `${cleanEndpoint}/vision/v3.2/read/analyze`
     
     console.log('Sending document to Azure Computer Vision...')
+    console.log('Request URL:', readUrl)
+    console.log('Using API Key starting with:', apiKey.substring(0, 4) + '...')
     
     // Step 1: Submit the document for analysis
     const analyzeResponse = await fetch(readUrl, {
@@ -29,17 +45,43 @@ async function performOCRWithAzure(buffer: Buffer): Promise<string> {
     })
     
     if (!analyzeResponse.ok) {
-      const error = await analyzeResponse.text()
-      throw new Error(`Azure API error: ${analyzeResponse.status} - ${error}`)
+      const errorText = await analyzeResponse.text()
+      console.error('Azure API error response:', {
+        status: analyzeResponse.status,
+        statusText: analyzeResponse.statusText,
+        error: errorText,
+        headers: Object.fromEntries(analyzeResponse.headers.entries())
+      })
+      
+      // Common error scenarios
+      if (analyzeResponse.status === 401) {
+        throw new Error('Azure API Key is invalid or expired. Check AZURE_COMPUTER_VISION_KEY in Vercel.')
+      } else if (analyzeResponse.status === 403) {
+        throw new Error('Azure subscription quota exceeded or region not supported.')
+      } else if (analyzeResponse.status === 404) {
+        throw new Error('Azure endpoint URL is incorrect. Check AZURE_COMPUTER_VISION_ENDPOINT.')
+      } else if (analyzeResponse.status === 413) {
+        throw new Error('PDF file too large for Azure OCR (max 50MB).')
+      } else if (analyzeResponse.status === 429) {
+        throw new Error('Azure rate limit exceeded. Wait a moment and try again.')
+      }
+      
+      throw new Error(`Azure API error: ${analyzeResponse.status} - ${errorText}`)
     }
     
     // Get the operation location from headers
-    const operationLocation = analyzeResponse.headers.get('Operation-Location')
+    const operationLocation = analyzeResponse.headers.get('Operation-Location') || 
+                             analyzeResponse.headers.get('operation-location') // Try lowercase
+    
+    console.log('Response headers:', Object.fromEntries(analyzeResponse.headers.entries()))
+    
     if (!operationLocation) {
-      throw new Error('No operation location returned from Azure')
+      console.error('No operation location in headers:', Object.fromEntries(analyzeResponse.headers.entries()))
+      throw new Error('No operation location returned from Azure - API may have changed')
     }
     
-    console.log('Document submitted, waiting for OCR to complete...')
+    console.log('Document submitted, operation location:', operationLocation)
+    console.log('Waiting for OCR to complete...')
     
     // Step 2: Poll for results
     let result
@@ -56,7 +98,12 @@ async function performOCRWithAzure(buffer: Buffer): Promise<string> {
       })
       
       if (!resultResponse.ok) {
-        throw new Error(`Failed to get OCR results: ${resultResponse.status}`)
+        const errorText = await resultResponse.text()
+        console.error('Failed to get OCR results:', {
+          status: resultResponse.status,
+          error: errorText
+        })
+        throw new Error(`Failed to get OCR results: ${resultResponse.status} - ${errorText}`)
       }
       
       result = await resultResponse.json()
@@ -64,8 +111,11 @@ async function performOCRWithAzure(buffer: Buffer): Promise<string> {
       if (result.status === 'succeeded') {
         break
       } else if (result.status === 'failed') {
-        throw new Error('OCR processing failed')
+        console.error('OCR processing failed:', result)
+        throw new Error(`OCR processing failed: ${JSON.stringify(result)}`)
       }
+      
+      console.log(`OCR status: ${result.status} (attempt ${attempts + 1}/${maxAttempts})`)
       
       attempts++
     }
@@ -107,10 +157,25 @@ async function performOCRWithAzure(buffer: Buffer): Promise<string> {
     }
     
     console.log('Azure Computer Vision OCR completed, text length:', fullText.length)
+    
+    if (fullText.length === 0) {
+      console.warn('Azure OCR returned no text - document might be blank or unreadable')
+    }
+    
     return fullText.trim()
     
   } catch (error) {
-    console.error('Azure Computer Vision OCR failed:', error)
+    console.error('Azure Computer Vision OCR failed with error:', error)
+    console.error('Full error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : 'No stack',
+      name: error instanceof Error ? error.name : 'Unknown'
+    })
+    
+    // Re-throw with more context
+    if (error instanceof Error) {
+      throw new Error(`Azure OCR Error: ${error.message}`)
+    }
     throw error
   }
 }
@@ -188,13 +253,25 @@ export async function extractTextFromFile(file: File): Promise<string> {
             try {
               console.log('Attempting Azure OCR to get complete text...')
               const ocrText = await performOCRWithAzure(buffer)
+              console.log(`Azure OCR result: ${ocrText ? ocrText.length : 0} characters`)
+              
               if (ocrText && ocrText.trim().length > totalChars) {
                 console.log(`Azure OCR extracted ${ocrText.length} chars vs unpdf's ${totalChars} chars - using Azure`)
                 return ocrText
+              } else if (ocrText && ocrText.trim().length > 0) {
+                console.log(`Azure OCR got ${ocrText.length} chars but unpdf already has ${totalChars} - keeping unpdf`)
+              } else {
+                console.log('Azure OCR returned no text')
               }
             } catch (ocrError) {
-              console.error('Azure OCR failed:', ocrError)
+              console.error('Azure OCR failed at 7562 limit check:', ocrError)
+              console.error('Error details:', {
+                message: ocrError instanceof Error ? ocrError.message : 'Unknown',
+                name: ocrError instanceof Error ? ocrError.name : 'Unknown'
+              })
             }
+          } else {
+            console.log('Azure credentials not available for 7562 limit workaround')
           }
         }
         
