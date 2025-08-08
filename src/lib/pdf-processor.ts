@@ -137,6 +137,13 @@ export async function extractTextFromFile(file: File): Promise<string> {
         // Extract text with page information
         const { totalPages, text } = await extractText(pdf, { mergePages: false })
         
+        console.log('unpdf result:', { 
+          totalPages, 
+          textType: typeof text, 
+          isArray: Array.isArray(text),
+          textLength: Array.isArray(text) ? text.length : (text?.length || 0)
+        })
+        
         // Format the text with page markers
         let fullText = ''
         let totalChars = 0
@@ -157,10 +164,13 @@ export async function extractTextFromFile(file: File): Promise<string> {
               fullText += '[No text on this page]\n'
             }
           }
-        } else {
+        } else if (typeof text === 'string') {
           // Single text string (shouldn't happen with mergePages: false)
           fullText = text || ''
           totalChars = fullText.length
+        } else {
+          console.log('Unexpected text format from unpdf:', text)
+          totalChars = 0
         }
         
         console.log(`PDF text extraction completed with unpdf: ${totalPages} pages, ${totalChars} total characters`)
@@ -181,19 +191,37 @@ export async function extractTextFromFile(file: File): Promise<string> {
           console.log(`unpdf found ${mergedResult.totalPages} pages but extracted 0 characters - likely scanned PDF`)
           
           // Check if Azure credentials are configured
-          const hasAzureCredentials = process.env.AZURE_COMPUTER_VISION_ENDPOINT && process.env.AZURE_COMPUTER_VISION_KEY
+          const azureEndpoint = process.env.AZURE_COMPUTER_VISION_ENDPOINT
+          const azureKey = process.env.AZURE_COMPUTER_VISION_KEY
           
-          if (hasAzureCredentials) {
+          console.log('Azure credentials check:', {
+            hasEndpoint: !!azureEndpoint,
+            endpointLength: azureEndpoint?.length || 0,
+            hasKey: !!azureKey,
+            keyLength: azureKey?.length || 0
+          })
+          
+          if (azureEndpoint && azureKey) {
             console.log('Azure Computer Vision credentials found, attempting OCR...')
+            console.log('Calling performOCRWithAzure with buffer length:', buffer.length)
             try {
               const ocrText = await performOCRWithAzure(buffer)
+              console.log('OCR result:', ocrText ? `${ocrText.length} characters extracted` : 'null/empty')
               if (ocrText && ocrText.trim().length > 0) {
                 console.log(`Azure OCR successful! Extracted ${ocrText.length} characters from ${mergedResult.totalPages} pages`)
                 return ocrText
+              } else {
+                console.log('Azure OCR returned no text')
               }
             } catch (ocrError) {
-              console.error('Azure OCR failed:', ocrError)
+              console.error('Azure OCR failed with error:', ocrError)
+              console.error('Error details:', {
+                message: ocrError instanceof Error ? ocrError.message : 'Unknown',
+                stack: ocrError instanceof Error ? ocrError.stack : 'No stack'
+              })
             }
+          } else {
+            console.log('Azure credentials NOT configured in environment')
           }
           
           console.log('Falling back to pdf2json to see if it can extract any text...')
