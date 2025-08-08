@@ -129,23 +129,23 @@ export default function DebugPage() {
                 {/* Warning or success message about processing method */}
                 {result.extraction.is7562Limit && (
                   <div className={`mt-4 p-3 rounded ${
-                    result.extraction.hasOCRMarkers 
+                    result.extraction.hasOCRMarkers || result.extraction.usedAzureOCR
                       ? 'bg-green-50 border border-green-200' 
-                      : 'bg-red-50 border border-red-200'
+                      : 'bg-amber-50 border border-amber-200'
                   }`}>
                     <p className={`text-sm font-semibold mb-1 ${
-                      result.extraction.hasOCRMarkers ? 'text-green-800' : 'text-red-800'
+                      result.extraction.hasOCRMarkers || result.extraction.usedAzureOCR ? 'text-green-800' : 'text-amber-800'
                     }`}>
-                      {result.extraction.hasOCRMarkers 
+                      {result.extraction.hasOCRMarkers || result.extraction.usedAzureOCR
                         ? '✅ Azure OCR Successfully Processed Document' 
-                        : '⚠️ PDF Extraction Hit 7,562 Character Limit'}
+                        : '⚠️ PDF Extraction Hit 7,562 Character Limit - Azure OCR Processing...'}
                     </p>
                     <p className={`text-xs ${
-                      result.extraction.hasOCRMarkers ? 'text-green-700' : 'text-red-700'
+                      result.extraction.hasOCRMarkers || result.extraction.usedAzureOCR ? 'text-green-700' : 'text-amber-700'
                     }`}>
-                      {result.extraction.hasOCRMarkers 
+                      {result.extraction.hasOCRMarkers || result.extraction.usedAzureOCR
                         ? `Azure OCR extracted ${result.extraction.textLength.toLocaleString()} characters from ${result.extraction.pageCount || result.extraction.estimatedPages} pages. All content should be complete.`
-                        : 'Extraction may be incomplete. Enable server-side processing with Azure OCR configured for full extraction.'}
+                        : 'PDF extraction hit the 7,562 character limit. The system should automatically use Azure OCR for complete extraction. If this persists, check Azure credentials.'}
                     </p>
                   </div>
                 )}

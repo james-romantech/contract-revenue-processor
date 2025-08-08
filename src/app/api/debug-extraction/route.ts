@@ -48,6 +48,11 @@ export async function POST(request: NextRequest) {
                           extractedText.includes('[END TABLE]') ||
                           pageMarkers.length > 1
     
+    // Check if Azure OCR was actually used by looking for specific patterns
+    const usedAzureOCR = extractedText.includes('[TABLE DETECTED]') || 
+                         extractedText.includes('[END TABLE]') ||
+                         (is7562Limit && extractedText.length > 7567) // If we were at limit but now have more text
+    
     return NextResponse.json({
       success: true,
       file: {
@@ -64,7 +69,8 @@ export async function POST(request: NextRequest) {
         pageBreakPatterns: pageBreakPatterns,
         is7562Limit: is7562Limit,
         hasOCRMarkers: hasOCRMarkers,
-        processingMethod: hasOCRMarkers ? 'Azure OCR' : (is7562Limit ? 'Truncated PDF extraction' : 'Full PDF extraction'),
+        usedAzureOCR: usedAzureOCR,
+        processingMethod: usedAzureOCR ? 'Azure OCR' : (hasOCRMarkers ? 'Azure OCR' : (is7562Limit ? 'Truncated PDF extraction' : 'Full PDF extraction')),
         // First 5000 chars to see what was extracted
         textPreview: extractedText.substring(0, 5000),
         lastTextPreview: lastChars,

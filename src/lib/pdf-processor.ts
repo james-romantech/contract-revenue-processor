@@ -240,8 +240,8 @@ export async function extractTextFromFile(file: File): Promise<string> {
         
         console.log(`PDF text extraction completed with unpdf: ${totalPages} pages, ${totalChars} total characters`)
         
-        // Check for the suspicious 7562 character limit
-        if (totalChars === 7562 || totalChars === 7561 || totalChars === 7563) {
+        // Check for the suspicious 7562 character limit (with wider range for variation)
+        if (totalChars >= 7557 && totalChars <= 7567) {
           console.warn('⚠️ WARNING: unpdf extracted ~7562 characters - suspicious limit detected!')
           console.log(`unpdf got exactly ${totalChars} chars - this is likely truncated. Using Azure OCR instead...`)
           
@@ -503,9 +503,27 @@ Upload date: ${new Date().toLocaleDateString()}`)
             console.log(`  - Text per page: ${pageTextLengths.join(', ')}`)
             console.log(`  - Average chars/page: ${processedPages > 0 ? Math.round(fullText.length / processedPages) : 0}`)
             
-            // Check if we hit exactly 7562 characters
-            if (fullText.length === 7562) {
-              console.warn('⚠️ WARNING: Extracted exactly 7562 characters - this might indicate a pdf2json limit!')
+            // Check if we hit the 7562 character limit range
+            if (fullText.length >= 7557 && fullText.length <= 7567) {
+              console.warn('⚠️ WARNING: Extracted ~7562 characters - this indicates a pdf2json limit!')
+              
+              // Try Azure OCR to get the complete text
+              const azureEndpoint = process.env.AZURE_COMPUTER_VISION_ENDPOINT
+              const azureKey = process.env.AZURE_COMPUTER_VISION_KEY
+              
+              if (azureEndpoint && azureKey) {
+                console.log('Attempting Azure OCR to bypass 7562 character limit...')
+                try {
+                  const ocrText = await performOCRWithAzure(buffer)
+                  if (ocrText && ocrText.trim().length > 0) {
+                    console.log(`Azure OCR successful! Extracted ${ocrText.length} characters (pdf2json had ${fullText.length})`)
+                    resolve(ocrText)
+                    return // Exit early with OCR result
+                  }
+                } catch (ocrError) {
+                  console.error('Azure OCR failed:', ocrError)
+                }
+              }
             }
             
             if (fullText.trim().length === 0 || fullText.trim().length < 50) {
