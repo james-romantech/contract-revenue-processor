@@ -200,7 +200,8 @@ export default function Home() {
         {/* Processing Indicator */}
         {isProcessing && (
           <section className="w-full py-8">
-            <div className="max-w-3xl mx-auto px-4">
+            <div className="w-full flex justify-center px-4">
+              <div className="w-full max-w-3xl">
               <div className="card-modern bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
                 <div className="flex flex-col sm:flex-row items-center gap-4">
                   <div className="relative">
@@ -218,6 +219,7 @@ export default function Home() {
                   </div>
                 </div>
               </div>
+              </div>
             </div>
           </section>
         )}
@@ -225,9 +227,11 @@ export default function Home() {
         {/* Error Display */}
         {error && (
           <section className="w-full py-8">
-            <div className="max-w-3xl mx-auto px-4 slide-up">
+            <div className="w-full flex justify-center px-4">
+              <div className="w-full max-w-3xl slide-up">
               <div className="card-modern border-l-4 border-red-500 bg-red-50">
                 <p className="text-red-800 font-medium">⚠️ {error}</p>
+              </div>
               </div>
             </div>
           </section>
@@ -236,7 +240,8 @@ export default function Home() {
         {/* Contract Data Display */}
         {contractData && (
           <section className="w-full py-12 bg-gray-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 slide-up">
+            <div className="w-full flex justify-center px-4 sm:px-6 lg:px-8">
+              <div className="w-full max-w-6xl space-y-8 slide-up">
               {/* Success Notification */}
               <div className="w-full max-w-3xl mx-auto">
                 <div className="card-modern bg-gradient-to-r from-green-500 to-emerald-600 text-white">
@@ -285,6 +290,7 @@ export default function Home() {
                   />
                 </div>
               </div>
+              </div>
             </div>
           </section>
         )}
@@ -292,8 +298,8 @@ export default function Home() {
         {/* Features Section */}
         {!contractData && !isProcessing && (
           <section className="w-full py-20 bg-white">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
+            <div className="w-full flex justify-center px-4 sm:px-6 lg:px-8">
+              <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
                 <div className="card-modern text-center hover-lift p-8">
                   <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-6">
                     <FileText className="h-8 w-8 text-white" />
