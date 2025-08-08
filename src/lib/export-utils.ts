@@ -30,6 +30,13 @@ function formatDate(date: Date | string | null): string {
   return format(d, 'yyyy-MM-dd')
 }
 
+function getExcelDate(date: Date | string | null): Date | string {
+  if (!date) return ''
+  const d = typeof date === 'string' ? new Date(date) : date
+  // Return as a Date object for Excel to recognize
+  return d
+}
+
 function formatCurrency(amount: number | null | undefined): string {
   if (amount === null || amount === undefined) return '0.00'
   // Ensure amount is a number
@@ -132,13 +139,13 @@ export function exportToExcel(data: ExportData, filename: string = 'contract-ana
         data.contractInfo.description || '',
         allocation.description,
         amount,
-        formatDate(allocation.recognitionDate)
+        getExcelDate(allocation.recognitionDate)
       ])
     })
     
     const wsRevenue = XLSX.utils.aoa_to_sheet(revenueData)
     
-    // Format currency columns
+    // Format currency and date columns
     if (wsRevenue['C2'] && wsRevenue['F2']) {
       for (let i = 2; i <= revenueData.length; i++) {
         // Contract Value column (C)
@@ -150,6 +157,12 @@ export function exportToExcel(data: ExportData, filename: string = 'contract-ana
         const cellF = wsRevenue[`F${i}`]
         if (cellF && typeof cellF.v === 'number') {
           cellF.z = '$#,##0.00'
+        }
+        // Recognition Date column (G)
+        const cellG = wsRevenue[`G${i}`]
+        if (cellG && cellG.v instanceof Date) {
+          cellG.t = 'd'
+          cellG.z = 'yyyy-mm-dd'
         }
       }
     }
@@ -183,13 +196,13 @@ export function exportToExcel(data: ExportData, filename: string = 'contract-ana
         data.contractInfo.description || '',
         milestone.name,
         amount,
-        formatDate(milestone.dueDate)
+        getExcelDate(milestone.dueDate)
       ])
     })
     
     const wsBilling = XLSX.utils.aoa_to_sheet(billingData)
     
-    // Format currency columns
+    // Format currency and date columns
     if (wsBilling['C2'] && wsBilling['F2']) {
       for (let i = 2; i <= billingData.length; i++) {
         // Contract Value column (C)
@@ -201,6 +214,12 @@ export function exportToExcel(data: ExportData, filename: string = 'contract-ana
         const cellF = wsBilling[`F${i}`]
         if (cellF && typeof cellF.v === 'number') {
           cellF.z = '$#,##0.00'
+        }
+        // Due Date column (G)
+        const cellG = wsBilling[`G${i}`]
+        if (cellG && cellG.v instanceof Date) {
+          cellG.t = 'd'
+          cellG.z = 'yyyy-mm-dd'
         }
       }
     }
