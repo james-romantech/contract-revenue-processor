@@ -30,9 +30,12 @@ function formatDate(date: Date | string | null): string {
   return format(d, 'yyyy-MM-dd')
 }
 
-function formatCurrency(amount: number | null): string {
+function formatCurrency(amount: number | null | undefined): string {
   if (amount === null || amount === undefined) return '0.00'
-  return amount.toFixed(2)
+  // Ensure amount is a number
+  const numAmount = typeof amount === 'number' ? amount : parseFloat(String(amount))
+  if (isNaN(numAmount)) return '0.00'
+  return numAmount.toFixed(2)
 }
 
 export function exportToCSV(data: ExportData, filename: string = 'contract-analysis') {
@@ -59,9 +62,10 @@ export function exportToCSV(data: ExportData, filename: string = 'contract-analy
     contractData.push(['Milestones'])
     contractData.push(['Name', 'Amount', 'Due Date'])
     data.milestones.forEach(milestone => {
+      const amount = typeof milestone.amount === 'number' ? milestone.amount : parseFloat(String(milestone.amount)) || 0
       contractData.push([
         milestone.name,
-        formatCurrency(milestone.amount),
+        formatCurrency(amount),
         formatDate(milestone.dueDate)
       ])
     })
@@ -73,16 +77,20 @@ export function exportToCSV(data: ExportData, filename: string = 'contract-analy
     contractData.push(['Revenue Recognition Schedule'])
     contractData.push(['Description', 'Amount', 'Recognition Date', 'Type'])
     data.revenueAllocations.forEach(allocation => {
+      const amount = typeof allocation.amount === 'number' ? allocation.amount : parseFloat(String(allocation.amount)) || 0
       contractData.push([
         allocation.description,
-        formatCurrency(allocation.amount),
+        formatCurrency(amount),
         formatDate(allocation.recognitionDate),
         allocation.type
       ])
     })
     
     // Add total
-    const total = data.revenueAllocations.reduce((sum, a) => sum + a.amount, 0)
+    const total = data.revenueAllocations.reduce((sum, a) => {
+      const amount = typeof a.amount === 'number' ? a.amount : parseFloat(String(a.amount)) || 0
+      return sum + amount
+    }, 0)
     contractData.push([])
     contractData.push(['Total', formatCurrency(total), '', ''])
   }
@@ -144,15 +152,19 @@ export function exportToExcel(data: ExportData, filename: string = 'contract-ana
     ]
     
     data.milestones.forEach(milestone => {
+      const amount = typeof milestone.amount === 'number' ? milestone.amount : parseFloat(String(milestone.amount)) || 0
       milestonesData.push([
         milestone.name,
-        milestone.amount,
+        amount,
         formatDate(milestone.dueDate)
       ])
     })
     
     // Add total
-    const totalMilestones = data.milestones.reduce((sum, m) => sum + m.amount, 0)
+    const totalMilestones = data.milestones.reduce((sum, m) => {
+      const amount = typeof m.amount === 'number' ? m.amount : parseFloat(String(m.amount)) || 0
+      return sum + amount
+    }, 0)
     milestonesData.push([])
     milestonesData.push(['Total', totalMilestones, ''])
     
@@ -187,16 +199,20 @@ export function exportToExcel(data: ExportData, filename: string = 'contract-ana
     ]
     
     data.revenueAllocations.forEach(allocation => {
+      const amount = typeof allocation.amount === 'number' ? allocation.amount : parseFloat(String(allocation.amount)) || 0
       revenueData.push([
         allocation.description,
-        allocation.amount,
+        amount,
         formatDate(allocation.recognitionDate),
         allocation.type
       ])
     })
     
     // Add total
-    const totalRevenue = data.revenueAllocations.reduce((sum, a) => sum + a.amount, 0)
+    const totalRevenue = data.revenueAllocations.reduce((sum, a) => {
+      const amount = typeof a.amount === 'number' ? a.amount : parseFloat(String(a.amount)) || 0
+      return sum + amount
+    }, 0)
     revenueData.push([])
     revenueData.push(['Total', totalRevenue, '', ''])
     
