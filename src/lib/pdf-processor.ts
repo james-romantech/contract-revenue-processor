@@ -513,16 +513,22 @@ Upload date: ${new Date().toLocaleDateString()}`)
               
               if (azureEndpoint && azureKey) {
                 console.log('Attempting Azure OCR to bypass 7562 character limit...')
-                try {
-                  const ocrText = await performOCRWithAzure(buffer)
-                  if (ocrText && ocrText.trim().length > 0) {
-                    console.log(`Azure OCR successful! Extracted ${ocrText.length} characters (pdf2json had ${fullText.length})`)
-                    resolve(ocrText)
-                    return // Exit early with OCR result
-                  }
-                } catch (ocrError) {
-                  console.error('Azure OCR failed:', ocrError)
-                }
+                performOCRWithAzure(buffer)
+                  .then(ocrText => {
+                    if (ocrText && ocrText.trim().length > 0) {
+                      console.log(`Azure OCR successful! Extracted ${ocrText.length} characters (pdf2json had ${fullText.length})`)
+                      resolve(ocrText)
+                    } else {
+                      // Continue with pdf2json result if OCR returns nothing
+                      resolve(fullText.trim())
+                    }
+                  })
+                  .catch(ocrError => {
+                    console.error('Azure OCR failed:', ocrError)
+                    // Continue with pdf2json result on error
+                    resolve(fullText.trim())
+                  })
+                return // Exit early - result will be resolved in the promise handlers above
               }
             }
             
