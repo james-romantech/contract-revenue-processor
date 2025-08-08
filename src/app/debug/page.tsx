@@ -98,6 +98,56 @@ export default function DebugPage() {
               </div>
             )}
             
+            {/* Extraction Stats */}
+            {result.extraction?.pageCount && (
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-lg font-semibold mb-4">📊 Extraction Statistics</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-gray-50 p-3 rounded">
+                    <p className="text-xs text-gray-600">Pages Extracted</p>
+                    <p className="text-2xl font-bold text-blue-600">{result.extraction.pageCount}</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded">
+                    <p className="text-xs text-gray-600">Total Characters</p>
+                    <p className="text-2xl font-bold text-green-600">{result.extraction.textLength.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded">
+                    <p className="text-xs text-gray-600">Avg Chars/Page</p>
+                    <p className="text-2xl font-bold text-purple-600">{result.debug?.charactersPerPage?.toLocaleString() || 0}</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded">
+                    <p className="text-xs text-gray-600">File Size</p>
+                    <p className="text-2xl font-bold text-orange-600">{(result.file?.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                </div>
+                
+                {/* Warning if we hit the 7562 character limit */}
+                {result.extraction.is7562Limit && (
+                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
+                    <p className="text-sm font-semibold text-red-800 mb-1">⚠️ pdf2json Character Limit Detected</p>
+                    <p className="text-xs text-red-700">
+                      Extraction stopped at exactly 7,562 characters. This appears to be a pdf2json limitation.
+                      Some pages may not have been extracted. Try using client-side processing or convert to Word format.
+                    </p>
+                  </div>
+                )}
+                
+                {result.extraction.pageBreakPatterns && result.extraction.pageBreakPatterns.length > 0 && (
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
+                    <p className="text-xs font-semibold text-blue-800 mb-1">Page Indicators Found:</p>
+                    <p className="text-xs text-blue-700">{result.extraction.pageBreakPatterns.join(', ')}</p>
+                  </div>
+                )}
+                
+                {result.extraction.pagesDetected && result.extraction.pagesDetected.length > 0 && (
+                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                    <p className="text-xs font-semibold text-yellow-800 mb-1">Page Markers:</p>
+                    <p className="text-xs text-yellow-700">{result.extraction.pagesDetected.join(', ')}</p>
+                  </div>
+                )}
+              </div>
+            )}
+            
             {/* Extracted Text */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-lg font-semibold mb-4">
@@ -106,11 +156,22 @@ export default function DebugPage() {
                   <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Contains Tab-Separated Data</span>
                 )}
               </h2>
-              <div className="bg-gray-50 p-4 rounded">
-                <p className="text-xs text-gray-600 mb-2">First 5000 characters:</p>
-                <pre className="text-sm whitespace-pre-wrap overflow-x-auto max-h-96">
-                  {result.extraction?.textPreview || 'No text extracted'}
-                </pre>
+              <div className="space-y-4">
+                <div className="bg-gray-50 p-4 rounded">
+                  <p className="text-xs text-gray-600 mb-2">First 5000 characters:</p>
+                  <pre className="text-sm whitespace-pre-wrap overflow-x-auto max-h-96">
+                    {result.extraction?.textPreview || 'No text extracted'}
+                  </pre>
+                </div>
+                
+                {result.extraction?.lastTextPreview && (
+                  <div className="bg-gray-50 p-4 rounded">
+                    <p className="text-xs text-gray-600 mb-2">Last 1000 characters (to verify all pages extracted):</p>
+                    <pre className="text-sm whitespace-pre-wrap overflow-x-auto max-h-48">
+                      {result.extraction.lastTextPreview}
+                    </pre>
+                  </div>
+                )}
               </div>
               
               {result.extraction?.fullText && (

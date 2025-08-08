@@ -128,6 +128,7 @@ export async function extractTextFromFile(file: File): Promise<string> {
       const PDFParserClass = PDFParser.default || PDFParser
       
       return new Promise((resolve, reject) => {
+        // Create parser with verbosity level 1 and no page limit
         const pdfParser = new PDFParserClass(null, 1)
         
         let pagesProcessedBeforeTimeout = 0
@@ -191,13 +192,27 @@ Upload date: ${new Date().toLocaleDateString()}`)
           clearTimeout(timeout) // Clear timeout on success
           try {
             console.log('PDF parsed successfully, extracting text...')
-            console.log(`Processing ${pdfData.Pages ? pdfData.Pages.length : 0} pages in server...`)
+            console.log('Raw pdfData structure:', {
+              hasPages: !!pdfData.Pages,
+              pageCount: pdfData.Pages ? pdfData.Pages.length : 0,
+              formImage: !!pdfData.formImage,
+              Meta: pdfData.Meta
+            })
             
             let fullText = ''
             let processedPages = 0
+            let pageTextLengths: number[] = []
             
             if (pdfData.Pages && pdfData.Pages.length > 0) {
-              pdfData.Pages.forEach((page: any, pageIndex: number) => {
+              console.log(`PDF has ${pdfData.Pages.length} pages total`)
+              
+              // Process each page
+              for (let pageIndex = 0; pageIndex < pdfData.Pages.length; pageIndex++) {
+                const page = pdfData.Pages[pageIndex]
+                const pageTextStart = fullText.length
+                console.log(`Processing page ${pageIndex + 1}/${pdfData.Pages.length}...`)
+                console.log(`  - Page has ${page.Texts ? page.Texts.length : 0} text elements`)
+                
                 if (page.Texts && page.Texts.length > 0) {
                   // Group texts by Y position to preserve line structure (important for tables)
                   const textsByLine: { [key: string]: any[] } = {}
@@ -245,12 +260,32 @@ Upload date: ${new Date().toLocaleDateString()}`)
                   processedPages++
                   pagesProcessedBeforeTimeout = processedPages // Update tracker for timeout handler
                   partialText = fullText // Save partial text in case of timeout
-                  console.log(`Processed page ${pageIndex + 1}/${pdfData.Pages.length}, current text length: ${fullText.length}`)
+                  
+                  const pageTextLength = fullText.length - pageTextStart
+                  pageTextLengths.push(pageTextLength)
+                  console.log(`Processed page ${pageIndex + 1}/${pdfData.Pages.length}:`)
+                  console.log(`  - Page text length: ${pageTextLength} chars`)
+                  console.log(`  - Total text length: ${fullText.length} chars`)
+                  console.log(`  - Running total: ${pageTextLengths.join(', ')}`)
+                } else {
+                  console.log(`Page ${pageIndex + 1} has no text`)
                 }
-              })
+              }
+            } else {
+              console.log('No pages found in PDF data')
             }
             
-            console.log(`PDF text extraction completed: ${processedPages} pages processed, total text length: ${fullText.length}`)
+            console.log(`PDF text extraction completed:`)
+            console.log(`  - Pages in PDF data: ${pdfData.Pages ? pdfData.Pages.length : 0}`)
+            console.log(`  - Pages processed: ${processedPages}`)
+            console.log(`  - Total text length: ${fullText.length} chars`)
+            console.log(`  - Text per page: ${pageTextLengths.join(', ')}`)
+            console.log(`  - Average chars/page: ${processedPages > 0 ? Math.round(fullText.length / processedPages) : 0}`)
+            
+            // Check if we hit exactly 7562 characters
+            if (fullText.length === 7562) {
+              console.warn('⚠️ WARNING: Extracted exactly 7562 characters - this might indicate a pdf2json limit!')
+            }
             
             if (fullText.trim().length === 0 || fullText.trim().length < 50) {
               // PDF appears to be scanned

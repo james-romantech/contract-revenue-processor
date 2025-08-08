@@ -26,6 +26,20 @@ export async function POST(request: NextRequest) {
       }
     }
     
+    // Count pages in extracted text (looking for page markers we might add)
+    const pageMarkers = extractedText.match(/--- Page \d+ ---/g) || []
+    const pageCount = pageMarkers.length || 1
+    
+    // Try to detect page breaks by looking for common patterns
+    const formFeedCount = (extractedText.match(/\f/g) || []).length
+    const pageBreakPatterns = (extractedText.match(/Page \d+|PAGE \d+|\d+ of \d+/gi) || [])
+    
+    // Get last 1000 chars to see if we got end of document
+    const lastChars = extractedText.substring(Math.max(0, extractedText.length - 1000))
+    
+    // Check if we hit the suspicious 7562 character limit
+    const is7562Limit = extractedText.length === 7562
+    
     return NextResponse.json({
       success: true,
       file: {
@@ -35,8 +49,14 @@ export async function POST(request: NextRequest) {
       },
       extraction: {
         textLength: extractedText.length,
+        pageCount: pageCount,
+        pagesDetected: pageMarkers,
+        formFeedCount: formFeedCount,
+        pageBreakPatterns: pageBreakPatterns,
+        is7562Limit: is7562Limit,
         // First 5000 chars to see what was extracted
         textPreview: extractedText.substring(0, 5000),
+        lastTextPreview: lastChars,
         fullText: extractedText,
         // What the AI saw
         aiExtraction
@@ -45,7 +65,8 @@ export async function POST(request: NextRequest) {
         hasText: extractedText.length > 0,
         looksLikeTable: extractedText.includes('|') || extractedText.includes('\t'),
         hasNumbers: /\$[\d,]+/.test(extractedText),
-        hasDates: /\d{1,2}\/\d{1,2}\/\d{4}|\w+ \d{4}/.test(extractedText)
+        hasDates: /\d{1,2}\/\d{1,2}\/\d{4}|\w+ \d{4}/.test(extractedText),
+        charactersPerPage: pageCount > 0 ? Math.round(extractedText.length / pageCount) : 0
       }
     })
     
