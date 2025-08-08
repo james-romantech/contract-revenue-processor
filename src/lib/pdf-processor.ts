@@ -175,6 +175,29 @@ export async function extractTextFromFile(file: File): Promise<string> {
         
         console.log(`PDF text extraction completed with unpdf: ${totalPages} pages, ${totalChars} total characters`)
         
+        // Check for the suspicious 7562 character limit
+        if (totalChars === 7562) {
+          console.warn('⚠️ WARNING: unpdf extracted exactly 7562 characters - suspicious limit!')
+          console.log('This might be a partial extraction. Attempting Azure OCR for complete text...')
+          
+          // Try Azure OCR even though we got some text
+          const azureEndpoint = process.env.AZURE_COMPUTER_VISION_ENDPOINT
+          const azureKey = process.env.AZURE_COMPUTER_VISION_KEY
+          
+          if (azureEndpoint && azureKey) {
+            try {
+              console.log('Attempting Azure OCR to get complete text...')
+              const ocrText = await performOCRWithAzure(buffer)
+              if (ocrText && ocrText.trim().length > totalChars) {
+                console.log(`Azure OCR extracted ${ocrText.length} chars vs unpdf's ${totalChars} chars - using Azure`)
+                return ocrText
+              }
+            } catch (ocrError) {
+              console.error('Azure OCR failed:', ocrError)
+            }
+          }
+        }
+        
         // If we got no text at all, try with mergePages: true
         if (totalChars === 0) {
           console.log('No text extracted with mergePages:false, trying with mergePages:true...')
@@ -224,9 +247,17 @@ export async function extractTextFromFile(file: File): Promise<string> {
             console.log('Azure credentials NOT configured in environment')
           }
           
-          console.log('Falling back to pdf2json to see if it can extract any text...')
-          // Set a flag to indicate we should try pdf2json
-          throw new Error(`Scanned PDF detected: ${mergedResult.totalPages} pages but no text extracted`)
+          // Don't fall back to pdf2json for scanned PDFs - it won't help
+          console.log('Scanned PDF detected but Azure OCR unavailable or failed')
+          return `This appears to be a scanned PDF (${mergedResult.totalPages} pages).
+
+Azure OCR is required to extract text from scanned documents.
+${azureEndpoint && azureKey ? 'Azure is configured but OCR failed - check logs for errors.' : 'Azure credentials are not configured.'}
+
+For scanned PDFs, you need:
+1. Azure Computer Vision API configured in Vercel
+2. Or use client-side processing (may not work for scanned)
+3. Or convert to a Word document`
         }
         
         // Only return if we got actual text
