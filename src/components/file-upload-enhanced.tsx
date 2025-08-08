@@ -16,6 +16,9 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
   const [error, setError] = useState<string | null>(null)
 
   const processFile = async (file: File) => {
+    console.log('=== processFile called ===')
+    console.log('File:', file.name, file.type, file.size)
+    
     setError(null)
     setIsProcessing(true)
     
@@ -23,16 +26,19 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
       // Always use server-side processing for all file types
       if (file.type === 'application/pdf') {
         setProcessingStatus('Processing PDF on server...')
+        console.log('PDF detected, sending to server')
       } else if (
         file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
         file.type === 'application/msword'
       ) {
         setProcessingStatus('Processing Word document on server...')
+        console.log('Word doc detected, sending to server')
       } else {
         throw new Error('Unsupported file type. Please upload a PDF or Word document.')
       }
       
       // Always pass empty string for extractedText to force server processing
+      console.log('Calling onProcessComplete with empty string and file')
       onProcessComplete('', file)
       setProcessingStatus('Upload complete - processing on server...')
       
@@ -40,9 +46,9 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
       console.error('File processing error:', err)
       setError(err instanceof Error ? err.message : 'Failed to process file')
       setProcessingStatus('')
-    } finally {
       setIsProcessing(false)
     }
+    // Don't set isProcessing to false here - let the parent component handle it
   }
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -136,15 +142,23 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
             </div>
           ) : (
             <>
-              <Upload className="h-12 w-12 text-gray-400 mb-4" />
-              <p className="text-sm font-medium text-gray-900">
-                {isProcessing || externalProcessing ? 'Processing...' : 'Drop your contract here'}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">or click to select</p>
-              <p className="text-xs text-gray-400 mt-2">Supports PDF and Word documents</p>
-              <p className="text-xs text-green-600 mt-1 font-semibold">
-                ✨ AI-powered extraction with OCR support
-              </p>
+              {isProcessing || externalProcessing ? (
+                <>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4" />
+                  <p className="text-sm font-medium text-gray-900">Processing your contract...</p>
+                  <p className="text-xs text-gray-500 mt-1">Please wait while we extract and analyze</p>
+                </>
+              ) : (
+                <>
+                  <Upload className="h-12 w-12 text-gray-400 mb-4" />
+                  <p className="text-sm font-medium text-gray-900">Drop your contract here</p>
+                  <p className="text-xs text-gray-500 mt-1">or click to select</p>
+                  <p className="text-xs text-gray-400 mt-2">Supports PDF and Word documents</p>
+                  <p className="text-xs text-green-600 mt-1 font-semibold">
+                    ✨ AI-powered extraction with OCR support
+                  </p>
+                </>
+              )}
             </>
           )}
         </label>

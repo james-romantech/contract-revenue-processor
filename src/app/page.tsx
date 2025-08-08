@@ -49,6 +49,10 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
 
   const handleProcessComplete = async (extractedText: string, file: File) => {
+    console.log('=== handleProcessComplete called ===')
+    console.log('File:', file.name, file.type, file.size)
+    console.log('ExtractedText length:', extractedText?.length || 0)
+    
     setIsProcessing(true)
     setError(null)
     setContractData(null)
@@ -117,6 +121,23 @@ export default function Home() {
         </div>
 
         <FileUploadEnhanced onProcessComplete={handleProcessComplete} isProcessing={isProcessing} />
+
+        {isProcessing && (
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div>
+                <p className="text-blue-800 font-medium">Processing your contract...</p>
+                <p className="text-blue-600 text-sm mt-1">
+                  Extracting text • Running AI analysis • Calculating revenue allocations
+                </p>
+                <p className="text-blue-500 text-xs mt-2">
+                  This may take 10-30 seconds depending on document size
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
