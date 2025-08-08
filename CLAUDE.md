@@ -37,15 +37,16 @@ The AI extraction has been significantly enhanced to handle **implicit contract 
 ## Document Processing Capabilities
 
 ### 1. Text-Based PDFs
-- Direct text extraction using pdf2json
+- Primary extraction using **unpdf** (modern, no character limits)
+- Fallback to **pdf2json** for edge cases
 - Fast and reliable for digitally created PDFs
 
 ### 2. Scanned PDFs (OCR)
-- **AWS Textract** integration
+- **Azure Computer Vision** integration (replaced AWS Textract)
 - High-accuracy OCR for scanned contracts
 - Handles complex layouts, tables, forms, and key-value pairs
-- Processes documents up to 5MB synchronously
-- Cost: ~$1.50 per 1000 pages
+- 5,000 pages/month FREE (F0 tier)
+- Processes all document pages (no 7,562 character limit)
 
 ### 3. Word Documents
 - Full text extraction using mammoth
@@ -495,10 +496,60 @@ Example Contract:
 5. Share output for improvements
 
 ## Known Limitations
-- PDFs over 5MB need to be split for OCR
+- PDFs over 50MB need to be split for OCR (Azure limit)
 - Complex multi-column layouts may need adjustment
 - Handwritten text not supported
 - Best with English contracts (other languages work but less tested)
+
+## Latest Session Updates (January 2025) - PDF Extraction Deep Dive
+
+### The 7,562 Character Limit Mystery
+Discovered that both **unpdf** and **pdf2json** were hitting exactly 7,562 characters when processing certain PDFs. This was causing incomplete extraction of multi-page documents.
+
+#### Investigation Results:
+1. **unpdf** was extracting exactly 7,562 characters from a 6-page PDF
+2. **Azure OCR** was successfully extracting 7,563 characters (full document)
+3. The code was comparing lengths and keeping unpdf's truncated result
+
+#### The Fix:
+- Detect when extraction hits ~7,562 characters (±1)
+- Automatically trigger Azure OCR for complete extraction
+- Always use Azure's result when this limit is detected
+- This ensures all pages are extracted from scanned PDFs
+
+### PDF Processing Pipeline (Current)
+1. **First Attempt**: unpdf (modern, usually no limits)
+2. **If 7,562 chars detected**: Azure OCR (gets complete text)
+3. **If 0 chars (scanned)**: Azure OCR
+4. **Final Fallback**: pdf2json (limited but handles some edge cases)
+
+### Enhanced Debug Capabilities
+- **/debug page**: Shows extraction statistics, page counts, character counts
+- **Extraction Stats Section**: Displays pages extracted, total characters, warnings
+- **7,562 Limit Detection**: Special warning when this limit is hit
+- **Azure OCR Status**: Clear indication when OCR is used vs PDF extraction
+
+### Test Endpoints Added
+- **/api/check-env**: Verifies all environment variables (OpenAI, Azure)
+- **/api/test-azure**: Tests Azure Computer Vision credentials
+- **/api/test-azure-ocr**: Direct Azure OCR test bypassing PDF processing
+
+### Client vs Server Processing
+- **Client-side**: Uses PDF.js in browser, no timeout limits, good for text PDFs
+- **Server-side**: Uses unpdf → Azure OCR → pdf2json pipeline, handles scanned PDFs
+
+### Key Discoveries
+1. The 7,562 character limit appears to be an internal buffer limit in PDF processing libraries
+2. Azure OCR successfully processes all pages but needs explicit triggering
+3. Both unpdf and pdf2json can hit this limit on certain PDF types
+4. Client-side processing (PDF.js) doesn't have this limitation
+
+### Azure Computer Vision Configuration
+- **Free Tier**: 5,000 transactions/month (F0)
+- **Required Environment Variables**:
+  - `AZURE_COMPUTER_VISION_KEY`: Your API key
+  - `AZURE_COMPUTER_VISION_ENDPOINT`: Your endpoint URL
+- **Verified Working**: Extracts full text from scanned multi-page PDFs
 
 ## Future Enhancements
 - Export to Excel/CSV
