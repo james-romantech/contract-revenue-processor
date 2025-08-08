@@ -89,7 +89,15 @@ export async function POST(request: NextRequest) {
       try {
         console.log('Calling extractContractDataWithAI with text length:', extractedText.length)
         const aiExtractedData = await extractContractDataWithAI(extractedText)
-        console.log('✅ AI extraction successful:', aiExtractedData)
+        console.log('✅ AI extraction successful')
+        console.log('AI extracted values:', {
+          contractValue: aiExtractedData.contractValue,
+          clientName: aiExtractedData.clientName,
+          startDate: aiExtractedData.startDate,
+          endDate: aiExtractedData.endDate,
+          milestonesCount: aiExtractedData.milestones?.length || 0,
+          confidence: aiExtractedData.confidence
+        })
         validation = await validateExtractedData(aiExtractedData)
         
         // Create contract with AI-extracted data

@@ -112,7 +112,23 @@ export function ContractEditor({ contractData, onSave }: ContractEditorProps) {
     setIsEditing(false)
   }
 
-  const aiData = editedData.aiExtractedData
+  // Use aiExtractedData if available, otherwise fall back to top-level data
+  const aiData = editedData.aiExtractedData || {
+    contractValue: editedData.contractValue,
+    clientName: editedData.clientName,
+    startDate: editedData.startDate,
+    endDate: editedData.endDate,
+    workStartDate: editedData.startDate,
+    workEndDate: editedData.endDate,
+    billingStartDate: editedData.startDate,
+    billingEndDate: editedData.endDate,
+    description: editedData.description,
+    milestones: [],
+    paymentTerms: null,
+    deliverables: [],
+    confidence: 0,
+    reasoning: 'Data loaded from database'
+  }
   const validation = editedData.validation
 
   return (
