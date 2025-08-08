@@ -179,8 +179,24 @@ export async function extractTextFromFile(file: File): Promise<string> {
           
           // unpdf found pages but no text - this is likely a scanned PDF
           console.log(`unpdf found ${mergedResult.totalPages} pages but extracted 0 characters - likely scanned PDF`)
-          console.log('Falling back to pdf2json to see if it can extract any text...')
           
+          // Check if Azure credentials are configured
+          const hasAzureCredentials = process.env.AZURE_COMPUTER_VISION_ENDPOINT && process.env.AZURE_COMPUTER_VISION_KEY
+          
+          if (hasAzureCredentials) {
+            console.log('Azure Computer Vision credentials found, attempting OCR...')
+            try {
+              const ocrText = await performOCRWithAzure(buffer)
+              if (ocrText && ocrText.trim().length > 0) {
+                console.log(`Azure OCR successful! Extracted ${ocrText.length} characters from ${mergedResult.totalPages} pages`)
+                return ocrText
+              }
+            } catch (ocrError) {
+              console.error('Azure OCR failed:', ocrError)
+            }
+          }
+          
+          console.log('Falling back to pdf2json to see if it can extract any text...')
           // Set a flag to indicate we should try pdf2json
           throw new Error(`Scanned PDF detected: ${mergedResult.totalPages} pages but no text extracted`)
         }
