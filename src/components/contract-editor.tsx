@@ -47,6 +47,15 @@ interface ContractEditorProps {
 export function ContractEditor({ contractData, onSave }: ContractEditorProps) {
   const [editedData, setEditedData] = useState(contractData)
   const [isEditing, setIsEditing] = useState(false)
+  
+  // Debug logging
+  console.log('ContractEditor received:', {
+    hasAiData: !!contractData.aiExtractedData,
+    contractValue: contractData.contractValue,
+    aiContractValue: contractData.aiExtractedData?.contractValue,
+    clientName: contractData.clientName,
+    aiClientName: contractData.aiExtractedData?.clientName
+  })
 
   const handleFieldChange = (field: string, value: any) => {
     setEditedData(prev => ({

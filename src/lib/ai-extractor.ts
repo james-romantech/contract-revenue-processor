@@ -166,7 +166,7 @@ export async function extractContractDataWithAI(contractText: string): Promise<E
     }
 
     // Parse JSON response
-    console.log('Raw AI response:', response)
+    console.log('Raw AI response (first 500 chars):', response.substring(0, 500))
     
     let extractedData: ExtractedContractData
     try {
@@ -211,6 +211,14 @@ export async function extractContractDataWithAI(contractText: string): Promise<E
       throw new Error('AI response is not a valid object')
     }
 
+    console.log('Extracted data before validation:', {
+      contractValue: extractedData.contractValue,
+      clientName: extractedData.clientName,
+      startDate: extractedData.startDate,
+      endDate: extractedData.endDate,
+      milestonesCount: extractedData.milestones?.length || 0
+    })
+
     // Set defaults for missing fields
     const validatedData: ExtractedContractData = {
       contractValue: extractedData.contractValue || null,
@@ -237,6 +245,15 @@ export async function extractContractDataWithAI(contractText: string): Promise<E
       })(),
       reasoning: extractedData.reasoning || 'No reasoning provided'
     }
+
+    console.log('Final validated data:', {
+      contractValue: validatedData.contractValue,
+      clientName: validatedData.clientName,
+      startDate: validatedData.startDate,
+      endDate: validatedData.endDate,
+      confidence: validatedData.confidence,
+      milestonesCount: validatedData.milestones.length
+    })
 
     return validatedData
 
