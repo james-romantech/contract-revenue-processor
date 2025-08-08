@@ -249,6 +249,14 @@ export async function extractTextFromFile(file: File): Promise<string> {
           const azureEndpoint = process.env.AZURE_COMPUTER_VISION_ENDPOINT
           const azureKey = process.env.AZURE_COMPUTER_VISION_KEY
           
+          console.log('Azure credentials check at 7562 limit:', {
+            hasEndpoint: !!azureEndpoint,
+            endpointValue: azureEndpoint ? azureEndpoint.substring(0, 40) + '...' : 'not set',
+            hasKey: !!azureKey,
+            keyLength: azureKey?.length || 0,
+            keyPreview: azureKey ? azureKey.substring(0, 4) + '...' : 'not set'
+          })
+          
           if (azureEndpoint && azureKey) {
             try {
               console.log('Calling Azure OCR to get complete document text...')
@@ -267,12 +275,14 @@ export async function extractTextFromFile(file: File): Promise<string> {
               console.error('Azure OCR failed at 7562 limit check:', ocrError)
               console.error('Error details:', {
                 message: ocrError instanceof Error ? ocrError.message : 'Unknown',
-                name: ocrError instanceof Error ? ocrError.name : 'Unknown'
+                name: ocrError instanceof Error ? ocrError.name : 'Unknown',
+                stack: ocrError instanceof Error ? ocrError.stack : 'No stack'
               })
               // Keep unpdf result if Azure fails
             }
           } else {
-            console.log('Azure credentials not available for 7562 limit workaround')
+            console.log('⚠️ Azure credentials NOT configured in environment!')
+            console.log('Available env vars:', Object.keys(process.env).filter(k => k.includes('AZURE')).join(', '))
           }
         }
         
