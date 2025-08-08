@@ -61,11 +61,18 @@ export function RevenueCalculator({ contractData }: RevenueCalculatorProps) {
       startDate: new Date(startDate!),
       endDate: new Date(endDate!),
       allocationType,
-      milestones: contractData.aiExtractedData?.milestones.map(m => ({
-        name: m.name,
-        amount: m.amount,
-        dueDate: new Date(m.dueDate)
-      })) || []
+      milestones: contractData.aiExtractedData?.milestones.map(m => {
+        console.log('Milestone date conversion:', {
+          original: m.dueDate,
+          converted: new Date(m.dueDate),
+          isoString: new Date(m.dueDate).toISOString()
+        });
+        return {
+          name: m.name,
+          amount: m.amount,
+          dueDate: new Date(m.dueDate)
+        };
+      }) || []
     }
 
     const allocations = calculateRevenueAllocations(params)

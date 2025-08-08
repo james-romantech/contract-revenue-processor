@@ -54,7 +54,9 @@ export function ContractEditor({ contractData, onSave }: ContractEditorProps) {
     contractValue: contractData.contractValue,
     aiContractValue: contractData.aiExtractedData?.contractValue,
     clientName: contractData.clientName,
-    aiClientName: contractData.aiExtractedData?.clientName
+    aiClientName: contractData.aiExtractedData?.clientName,
+    aiConfidence: contractData.aiExtractedData?.confidence,
+    aiConfidenceType: typeof contractData.aiExtractedData?.confidence
   })
 
   const handleFieldChange = (field: string, value: any) => {
@@ -391,7 +393,15 @@ export function ContractEditor({ contractData, onSave }: ContractEditorProps) {
           <h3 className="font-medium text-gray-700 mb-2">AI Analysis</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <p><span className="font-medium">Confidence:</span> {(aiData.confidence <= 1 ? aiData.confidence * 100 : aiData.confidence).toFixed(1)}%</p>
+              <p><span className="font-medium">Confidence:</span> {(() => {
+                const conf = aiData.confidence || 0;
+                // If confidence is > 100, it's likely already multiplied (like 9500 for 95%)
+                if (conf > 100) return (conf / 100).toFixed(1);
+                // If confidence is > 1 but <= 100, it's a percentage
+                if (conf > 1) return conf.toFixed(1);
+                // If confidence is <= 1, it's a decimal that needs to be converted to percentage
+                return (conf * 100).toFixed(1);
+              })()}%</p>
               <p><span className="font-medium">Payment Terms:</span> {aiData.paymentTerms || 'Not detected'}</p>
             </div>
             <div>

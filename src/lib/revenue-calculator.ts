@@ -69,12 +69,18 @@ function calculateStraightLineRevenue(
 function calculateMilestoneRevenue(
   milestones: Array<{ name: string; amount: number; dueDate: Date }>
 ): RevenueAllocation[] {
-  return milestones.map(milestone => ({
-    amount: milestone.amount,
-    recognitionDate: endOfMonth(milestone.dueDate),
-    type: 'milestone' as const,
-    description: `Milestone: ${milestone.name}`
-  }))
+  return milestones.map(milestone => {
+    // Ensure we're working with a proper date at noon to avoid timezone issues
+    const dateAtNoon = new Date(milestone.dueDate)
+    dateAtNoon.setHours(12, 0, 0, 0)
+    
+    return {
+      amount: milestone.amount,
+      recognitionDate: endOfMonth(dateAtNoon),
+      type: 'milestone' as const,
+      description: `Milestone: ${milestone.name}`
+    }
+  })
 }
 
 function calculatePercentageCompleteRevenue(
@@ -109,12 +115,18 @@ function calculatePercentageCompleteRevenue(
 function calculateBilledBasisRevenue(
   milestones: Array<{ name: string; amount: number; dueDate: Date }>
 ): RevenueAllocation[] {
-  return milestones.map((milestone, index) => ({
-    amount: milestone.amount,
-    recognitionDate: endOfMonth(milestone.dueDate),
-    type: 'billed' as const,
-    description: `Billed amount ${index + 1}: ${milestone.name}`
-  }))
+  return milestones.map((milestone, index) => {
+    // Ensure we're working with a proper date at noon to avoid timezone issues
+    const dateAtNoon = new Date(milestone.dueDate)
+    dateAtNoon.setHours(12, 0, 0, 0)
+    
+    return {
+      amount: milestone.amount,
+      recognitionDate: endOfMonth(dateAtNoon),
+      type: 'billed' as const,
+      description: `Billed amount ${index + 1}: ${milestone.name}`
+    }
+  })
 }
 
 function getMonthsBetween(startDate: Date, endDate: Date): number {
