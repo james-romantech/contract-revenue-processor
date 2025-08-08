@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
     const cleanEndpoint = endpoint.replace(/\/+$/, '')
     const readUrl = `${cleanEndpoint}/vision/v3.2/read/analyze`
     
-    // Add readingOrder parameter to ensure all pages are processed
-    const analyzeUrl = `${readUrl}?readingOrder=natural&pages=1-100`
+    // S1 tier processes all pages by default
+    const analyzeUrl = `${readUrl}?readingOrder=natural`
     
     console.log('Submitting to Azure with URL:', analyzeUrl)
     

@@ -1,5 +1,4 @@
 import mammoth from 'mammoth'
-import { processLargePDFWithAzure } from './pdf-splitter'
 
 // OCR function for scanned PDFs using Azure Computer Vision
 async function performOCRWithAzureChunk(buffer: Buffer): Promise<string> {
@@ -87,10 +86,10 @@ async function performOCRWithAzureChunk(buffer: Buffer): Promise<string> {
     // Step 2: Poll for results
     let result
     let attempts = 0
-    const maxAttempts = 60 // 60 seconds max wait for multi-page documents
+    const maxAttempts = 90 // 90 attempts for S1 tier processing larger documents
     
     while (attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 1500)) // Wait 1.5 seconds
+      await new Promise(resolve => setTimeout(resolve, 2000)) // Wait 2 seconds between polls
       
       const resultResponse = await fetch(operationLocation, {
         headers: {
@@ -189,16 +188,10 @@ async function performOCRWithAzureChunk(buffer: Buffer): Promise<string> {
   }
 }
 
-// Wrapper function that handles PDF splitting for Azure's 2-page limit
+// Direct Azure OCR processing - S1 tier has no page limits
 async function performOCRWithAzure(buffer: Buffer): Promise<string> {
-  try {
-    // Use the splitting function to process PDFs larger than 2 pages
-    return await processLargePDFWithAzure(buffer, performOCRWithAzureChunk)
-  } catch (error) {
-    console.error('Error in performOCRWithAzure wrapper:', error)
-    // Fallback to direct processing if splitting fails
-    return await performOCRWithAzureChunk(buffer)
-  }
+  // S1 (paid) tier can process entire PDFs without splitting
+  return await performOCRWithAzureChunk(buffer)
 }
 
 export async function extractTextFromFile(file: File): Promise<string> {
