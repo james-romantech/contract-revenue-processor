@@ -15,23 +15,45 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingStatus, setProcessingStatus] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
+  const [useServerProcessing, setUseServerProcessing] = useState(false)
 
   const processFile = async (file: File) => {
     setError(null)
     setIsProcessing(true)
     
     try {
-      if (file.type === 'application/pdf') {
-        // Process PDF client-side (no timeout!)
-        setProcessingStatus('Processing PDF in browser (no timeout limits)...')
-        const extractedText = await extractTextFromPDFClient(file)
-        console.log('Client extraction complete:', {
-          textLength: extractedText.length,
-          preview: extractedText.substring(0, 500),
-          lastChars: extractedText.substring(extractedText.length - 500)
-        })
-        setProcessingStatus(`Extracted ${extractedText.length} characters from PDF`)
-        onProcessComplete(extractedText, file)
+      if (file.type === 'application/pdf' && !useServerProcessing) {
+        // Try client-side processing first
+        try {
+          setProcessingStatus('Processing PDF in browser (no timeout limits)...')
+          const extractedText = await extractTextFromPDFClient(file)
+          
+          // Check if we got meaningful text
+          const pageCount = (extractedText.match(/--- Page \d+ ---/g) || []).length
+          console.log('Client extraction complete:', {
+            textLength: extractedText.length,
+            pageCount: pageCount,
+            preview: extractedText.substring(0, 500),
+            lastChars: extractedText.substring(extractedText.length - 500)
+          })
+          
+          // If we didn't get all pages or text is too short, warn user
+          if (extractedText.length < 1000 || pageCount < 2) {
+            setError('PDF extraction may be incomplete. Try server-side processing if issues persist.')
+          }
+          
+          setProcessingStatus(`Extracted ${extractedText.length} characters from ${pageCount} pages`)
+          onProcessComplete(extractedText, file)
+        } catch (clientError) {
+          console.error('Client-side processing failed, falling back to server:', clientError)
+          setProcessingStatus('Client processing failed, using server...')
+          // Fall back to server processing
+          onProcessComplete('', file)
+        }
+      } else if (file.type === 'application/pdf' && useServerProcessing) {
+        // Force server-side processing for PDFs
+        setProcessingStatus('Processing PDF on server (may take up to 60 seconds)...')
+        onProcessComplete('', file)
       } else if (
         file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
         file.type === 'application/msword'
@@ -178,12 +200,30 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
       )}
 
       {selectedFile && selectedFile.type === 'application/pdf' && (
-        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-xs text-blue-800 font-medium">Client-Side Processing Active</p>
-          <p className="text-xs text-blue-600 mt-1">
-            Your PDF is being processed directly in your browser with no server timeout limits. 
-            All 6+ pages will be extracted successfully!
-          </p>
+        <div className="mt-4 space-y-3">
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-xs text-blue-800 font-medium">
+              {useServerProcessing ? 'Server-Side Processing' : 'Client-Side Processing Active'}
+            </p>
+            <p className="text-xs text-blue-600 mt-1">
+              {useServerProcessing 
+                ? 'PDF will be processed on server (60-second timeout with Vercel Pro)'
+                : 'PDF is being processed in your browser (no timeout limits)'}
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="server-processing"
+              checked={useServerProcessing}
+              onChange={(e) => setUseServerProcessing(e.target.checked)}
+              className="rounded border-gray-300"
+            />
+            <label htmlFor="server-processing" className="text-xs text-gray-700">
+              Use server-side processing (if client-side isn't extracting all pages)
+            </label>
+          </div>
         </div>
       )}
     </div>

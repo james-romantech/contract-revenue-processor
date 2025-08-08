@@ -191,7 +191,7 @@ Upload date: ${new Date().toLocaleDateString()}`)
           clearTimeout(timeout) // Clear timeout on success
           try {
             console.log('PDF parsed successfully, extracting text...')
-            console.log(`Processing ${pdfData.Pages ? pdfData.Pages.length : 0} pages...`)
+            console.log(`Processing ${pdfData.Pages ? pdfData.Pages.length : 0} pages in server...`)
             
             let fullText = ''
             let processedPages = 0
