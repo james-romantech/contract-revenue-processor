@@ -82,27 +82,43 @@ export async function processLargePDFWithAzure(
     
     // Process each chunk
     const results: string[] = []
+    let pageOffset = 0
+    
     for (let i = 0; i < chunks.length; i++) {
-      console.log(`Processing chunk ${i + 1}/${chunks.length}...`)
+      console.log(`Processing chunk ${i + 1}/${chunks.length} (pages ${pageOffset + 1}-${pageOffset + 2})...`)
       
       try {
-        const chunkText = await performOCRWithAzure(chunks[i])
+        let chunkText = await performOCRWithAzure(chunks[i])
+        
+        // Fix page numbering in the chunk text
+        // Azure always returns "Page 1" and "Page 2" for each chunk
+        // We need to renumber them based on the actual page numbers
+        if (i > 0) {
+          // Replace "Page 1" with actual page number
+          chunkText = chunkText.replace(/--- Page 1 ---/g, `--- Page ${pageOffset + 1} ---`)
+          // Replace "Page 2" with actual page number  
+          chunkText = chunkText.replace(/--- Page 2 ---/g, `--- Page ${pageOffset + 2} ---`)
+        }
+        
         results.push(chunkText)
         console.log(`Chunk ${i + 1} extracted: ${chunkText.length} characters`)
         
+        pageOffset += 2 // Each chunk has 2 pages
+        
         // Add a small delay between chunks to avoid rate limiting
         if (i < chunks.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          await new Promise(resolve => setTimeout(resolve, 2000)) // 2 second delay
         }
       } catch (error) {
         console.error(`Error processing chunk ${i + 1}:`, error)
-        results.push(`[Error processing pages ${i * 2 + 1}-${i * 2 + 2}]`)
+        results.push(`[Error processing pages ${pageOffset + 1}-${pageOffset + 2}]`)
+        pageOffset += 2
       }
     }
     
-    // Combine results
-    const fullText = results.join('\n\n--- Next Chunk ---\n\n')
-    console.log(`All chunks processed. Total text: ${fullText.length} characters`)
+    // Combine results without duplicate markers
+    const fullText = results.join('\n\n')
+    console.log(`All ${chunks.length} chunks processed. Total text: ${fullText.length} characters`)
     
     return fullText
     
