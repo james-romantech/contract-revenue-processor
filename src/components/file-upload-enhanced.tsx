@@ -97,18 +97,24 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
           file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
           file.type === 'application/msword') {
         setSelectedFile(file)
-        await processFile(file)
+        // Don't auto-process PDFs, let user choose processing method
+        if (file.type !== 'application/pdf') {
+          await processFile(file)
+        }
       } else {
         setError('Please upload a PDF or Word document')
       }
     }
-  }, [])
+  }, [processFile])
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0]
       setSelectedFile(file)
-      await processFile(file)
+      // Don't auto-process PDFs, let user choose processing method
+      if (file.type !== 'application/pdf') {
+        await processFile(file)
+      }
     }
   }
 
@@ -201,29 +207,51 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
 
       {selectedFile && selectedFile.type === 'application/pdf' && (
         <div className="mt-4 space-y-3">
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-xs text-blue-800 font-medium">
-              {useServerProcessing ? 'Server-Side Processing' : 'Client-Side Processing Active'}
-            </p>
-            <p className="text-xs text-blue-600 mt-1">
-              {useServerProcessing 
-                ? 'PDF will be processed on server (60-second timeout with Vercel Pro)'
-                : 'PDF is being processed in your browser (no timeout limits)'}
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <input
               type="checkbox"
               id="server-processing"
               checked={useServerProcessing}
-              onChange={(e) => setUseServerProcessing(e.target.checked)}
+              onChange={(e) => {
+                setUseServerProcessing(e.target.checked)
+                // Re-process the file if already selected
+                if (selectedFile && !isProcessing) {
+                  processFile(selectedFile)
+                }
+              }}
               className="rounded border-gray-300"
+              disabled={isProcessing}
             />
-            <label htmlFor="server-processing" className="text-xs text-gray-700">
-              Use server-side processing (if client-side isn't extracting all pages)
-            </label>
+            <div className="flex-1">
+              <label htmlFor="server-processing" className="text-sm font-medium text-gray-700 cursor-pointer">
+                Use server-side processing
+              </label>
+              <p className="text-xs text-gray-600 mt-1">
+                {useServerProcessing 
+                  ? 'PDF will process on server (55-second timeout, handles complex PDFs better)'
+                  : 'PDF will process in browser (no timeout, but may miss pages in complex PDFs)'}
+              </p>
+            </div>
           </div>
+          
+          {!isProcessing && (
+            <button
+              onClick={() => processFile(selectedFile)}
+              className="w-full px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              {processingStatus 
+                ? `Re-process PDF with ${useServerProcessing ? 'Server' : 'Client'} Processing`
+                : `Process PDF with ${useServerProcessing ? 'Server' : 'Client'} Processing`}
+            </button>
+          )}
+          
+          {processingStatus && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-xs text-blue-800 font-medium">
+                {processingStatus}
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
