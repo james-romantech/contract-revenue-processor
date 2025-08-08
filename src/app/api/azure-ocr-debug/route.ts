@@ -19,13 +19,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Azure not configured' }, { status: 500 })
     }
     
-    console.log(`Processing ${file.name}, size: ${buffer.length} bytes`)
+    console.log(`Processing ${file.name}, size: ${buffer.length} bytes (${(buffer.length / 1024).toFixed(2)} KB)`)
+    
+    // Log file details
+    console.log('File details:', {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      bufferLength: buffer.length,
+      bufferMatchesFileSize: buffer.length === file.size
+    })
     
     // Submit to Azure
     const cleanEndpoint = endpoint.replace(/\/+$/, '')
     const readUrl = `${cleanEndpoint}/vision/v3.2/read/analyze`
     
-    const analyzeResponse = await fetch(readUrl, {
+    // Add readingOrder parameter to ensure all pages are processed
+    const analyzeUrl = `${readUrl}?readingOrder=natural&pages=1-100`
+    
+    console.log('Submitting to Azure with URL:', analyzeUrl)
+    
+    const analyzeResponse = await fetch(analyzeUrl, {
       method: 'POST',
       headers: {
         'Ocp-Apim-Subscription-Key': apiKey,
