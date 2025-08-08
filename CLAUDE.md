@@ -551,6 +551,30 @@ Discovered that both **unpdf** and **pdf2json** were hitting exactly 7,562 chara
   - `AZURE_COMPUTER_VISION_ENDPOINT`: Your endpoint URL
 - **Verified Working**: Extracts full text from scanned multi-page PDFs
 
+### Final Resolution
+After extensive debugging, discovered Azure OCR was actually working perfectly (extracting 7,563 chars) but the code was keeping unpdf's truncated result. Fixed by:
+1. Always using Azure OCR when ~7,562 character limit detected
+2. Updated debug UI to show green success banner when Azure OCR processes
+3. Added processing method indicator to clarify which extraction method was used
+
+## Debugging Tools Created
+- **Comprehensive error logging** for all Azure OCR scenarios (401, 403, 404, 413, 429 errors)
+- **Test endpoints** for isolated testing of Azure OCR
+- **Enhanced debug page** with accurate success/warning messages
+- **Processing method display** showing exactly how text was extracted
+
+## Important Learnings
+1. **Always push to GitHub** - Changes aren't deployed until pushed (not just committed locally)
+2. **Check actual values, not assumptions** - Azure was working but UI was misleading
+3. **Log everything** - Detailed logging revealed Azure was extracting successfully
+4. **Test isolation** - Created separate test endpoints to verify each component
+
+## Current Status
+✅ **Multi-page PDF extraction working** - All 6 pages extracting via Azure OCR
+✅ **Debug interface accurate** - Shows correct success/warning messages
+✅ **Azure OCR integrated** - Automatically triggered when limits detected
+✅ **Comprehensive fallback chain** - unpdf → Azure OCR → pdf2json
+
 ## Future Enhancements
 - Export to Excel/CSV
 - Multi-contract dashboard
