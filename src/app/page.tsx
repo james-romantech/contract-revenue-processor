@@ -120,7 +120,7 @@ export default function Home() {
       <NavigationHeader />
       
       {/* Hero Section with Gradient Background */}
-      <div className="relative min-h-screen overflow-hidden">
+      <div className="relative min-h-screen overflow-hidden flex items-center justify-center">
         {/* Animated Background Pattern */}
         <div className="absolute inset-0 dot-pattern opacity-40" />
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50" />
@@ -130,8 +130,8 @@ export default function Home() {
         <div className="absolute top-40 right-10 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000" />
         <div className="absolute -bottom-8 left-20 w-72 h-72 bg-indigo-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000" />
         
-        <div className="relative z-10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12">
+        <div className="relative z-10 w-full">
+          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-20">
             {/* Hero Content */}
             <div className={`text-center mb-16 ${mounted ? 'slide-up' : 'opacity-0'}`}>
               <div className="flex justify-center mb-6">
@@ -151,20 +151,20 @@ export default function Home() {
               </p>
               
               {/* Feature Pills */}
-              <div className="flex flex-wrap justify-center gap-3 mb-12">
-                <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-md">
+              <div className="flex flex-wrap justify-center gap-4 mb-12">
+                <div className="flex items-center gap-2 px-5 py-2.5 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow">
                   <Sparkles className="h-4 w-4 text-indigo-600" />
                   <span className="text-sm font-medium">AI-Powered</span>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-md">
+                <div className="flex items-center gap-2 px-5 py-2.5 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow">
                   <Shield className="h-4 w-4 text-green-600" />
                   <span className="text-sm font-medium">Enterprise Secure</span>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-md">
+                <div className="flex items-center gap-2 px-5 py-2.5 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow">
                   <Zap className="h-4 w-4 text-yellow-600" />
                   <span className="text-sm font-medium">5,000 Pages Free</span>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-md">
+                <div className="flex items-center gap-2 px-5 py-2.5 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow">
                   <Award className="h-4 w-4 text-purple-600" />
                   <span className="text-sm font-medium">99% Accuracy</span>
                 </div>
@@ -228,7 +228,7 @@ export default function Home() {
 
             {/* Contract Data Display */}
             {contractData && (
-              <div className="mt-12 space-y-8 max-w-7xl mx-auto slide-up">
+              <div className="mt-12 space-y-8 w-full max-w-6xl mx-auto slide-up">
                 {/* Success Notification */}
                 <div className="card-modern bg-gradient-to-r from-green-500 to-emerald-600 text-white max-w-4xl mx-auto">
                   <div className="flex items-center gap-3">
@@ -274,33 +274,33 @@ export default function Home() {
             
             {/* Features Section */}
             {!contractData && !isProcessing && (
-              <div className="mt-20 grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-                <div className="card-modern text-center hover-lift">
-                  <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <FileText className="h-7 w-7 text-white" />
+              <div className="mt-24 mb-20 grid md:grid-cols-3 gap-10 max-w-6xl mx-auto px-4">
+                <div className="card-modern text-center hover-lift p-8">
+                  <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-6">
+                    <FileText className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="font-semibold text-lg mb-2">Smart Extraction</h3>
-                  <p className="text-gray-600 text-sm">
+                  <h3 className="font-semibold text-xl mb-3">Smart Extraction</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">
                     AI understands implicit contract language and extracts key terms automatically
                   </p>
                 </div>
                 
-                <div className="card-modern text-center hover-lift">
-                  <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <TrendingUp className="h-7 w-7 text-white" />
+                <div className="card-modern text-center hover-lift p-8">
+                  <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center mx-auto mb-6">
+                    <TrendingUp className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="font-semibold text-lg mb-2">Revenue Recognition</h3>
-                  <p className="text-gray-600 text-sm">
+                  <h3 className="font-semibold text-xl mb-3">Revenue Recognition</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">
                     Multiple methods including straight-line, milestone-based, and percentage complete
                   </p>
                 </div>
                 
-                <div className="card-modern text-center hover-lift">
-                  <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-                    <Shield className="h-7 w-7 text-white" />
+                <div className="card-modern text-center hover-lift p-8">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center mx-auto mb-6">
+                    <Shield className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="font-semibold text-lg mb-2">Enterprise Ready</h3>
-                  <p className="text-gray-600 text-sm">
+                  <h3 className="font-semibold text-xl mb-3">Enterprise Ready</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">
                     Secure processing with OCR support for scanned documents
                   </p>
                 </div>
