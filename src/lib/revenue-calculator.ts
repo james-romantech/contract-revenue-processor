@@ -51,6 +51,11 @@ function calculateStraightLineRevenue(
   
   // Start from the end of the first month
   let currentDate = endOfMonth(startDate)
+  console.log('Straight-line first date:', {
+    startDate: startDate.toISOString(),
+    endOfMonth: currentDate.toISOString(),
+    localString: currentDate.toLocaleDateString()
+  })
   
   for (let i = 0; i < totalMonths; i++) {
     allocations.push({
@@ -69,14 +74,24 @@ function calculateStraightLineRevenue(
 function calculateMilestoneRevenue(
   milestones: Array<{ name: string; amount: number; dueDate: Date }>
 ): RevenueAllocation[] {
-  return milestones.map(milestone => {
+  return milestones.map((milestone, index) => {
     // Ensure we're working with a proper date at noon to avoid timezone issues
     const dateAtNoon = new Date(milestone.dueDate)
     dateAtNoon.setHours(12, 0, 0, 0)
+    const endDate = endOfMonth(dateAtNoon)
+    
+    if (index === 0) {
+      console.log('Milestone first date:', {
+        originalDueDate: milestone.dueDate.toISOString(),
+        dateAtNoon: dateAtNoon.toISOString(),
+        endOfMonth: endDate.toISOString(),
+        localString: endDate.toLocaleDateString()
+      })
+    }
     
     return {
       amount: milestone.amount,
-      recognitionDate: endOfMonth(dateAtNoon),
+      recognitionDate: endDate,
       type: 'milestone' as const,
       description: `Milestone: ${milestone.name}`
     }

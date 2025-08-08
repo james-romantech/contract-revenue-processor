@@ -132,11 +132,18 @@ CONTRACT TEXT TO ANALYZE:`
 }
 
 export async function extractContractDataWithAI(contractText: string, retryCount = 0): Promise<ExtractedContractData> {
-  const maxRetries = 1 // Allow one retry for cold start issues
+  const maxRetries = 2 // Allow two retries for cold start issues
   
   try {
-    console.log(`AI extraction attempt ${retryCount + 1}. Text length: ${contractText.length} characters`)
+    console.log(`AI extraction attempt ${retryCount + 1}/${maxRetries + 1}. Text length: ${contractText.length} characters`)
     console.log('Timestamp:', new Date().toISOString())
+    
+    // Add a small delay on retries to avoid rate limiting
+    if (retryCount > 0) {
+      const delay = retryCount * 2000 // 2 seconds for first retry, 4 for second
+      console.log(`Waiting ${delay}ms before retry...`)
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
     
     // Rough token estimate (1 token ≈ 4 characters)
     const estimatedTokens = Math.ceil(contractText.length / 4)
@@ -263,10 +270,9 @@ export async function extractContractDataWithAI(contractText: string, retryCount
   } catch (error) {
     console.error(`AI extraction error (attempt ${retryCount + 1}):`, error)
     
-    // Retry once if this is the first attempt and it's not an auth error
+    // Retry if we haven't exceeded max retries and it's not an auth error
     if (retryCount < maxRetries && error instanceof Error && !error.message.includes('401')) {
-      console.log('Retrying AI extraction after 2 second delay...')
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      console.log(`Retrying AI extraction (attempt ${retryCount + 2}/${maxRetries + 1})...`)
       return extractContractDataWithAI(contractText, retryCount + 1)
     }
     

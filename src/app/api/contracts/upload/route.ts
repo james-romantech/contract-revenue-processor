@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { extractTextFromFile } from '@/lib/pdf-processor'
-import { extractContractDataWithAI, validateExtractedData } from '@/lib/ai-extractor'
+import { extractContractDataWithAI, validateExtractedData, type ExtractedContractData } from '@/lib/ai-extractor'
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now()
@@ -88,7 +88,17 @@ export async function POST(request: NextRequest) {
       console.log('✅ OpenAI API key found, proceeding with AI extraction...')
       try {
         console.log('Calling extractContractDataWithAI with text length:', extractedText.length)
-        const aiExtractedData = await extractContractDataWithAI(extractedText)
+        
+        // Add timeout wrapper for AI extraction
+        const aiExtractionPromise = extractContractDataWithAI(extractedText)
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('AI extraction timeout after 25 seconds')), 25000)
+        )
+        
+        const aiExtractedData = await Promise.race([
+          aiExtractionPromise,
+          timeoutPromise
+        ]) as ExtractedContractData
         console.log('✅ AI extraction successful')
         console.log('AI extracted values:', {
           contractValue: aiExtractedData.contractValue,
