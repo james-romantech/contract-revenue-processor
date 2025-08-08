@@ -36,6 +36,8 @@ function formatCurrency(amount: number | null): string {
 }
 
 export function exportToCSV(data: ExportData, filename: string = 'contract-analysis') {
+  console.log('exportToCSV called with:', { data, filename })
+  
   // Prepare contract info data
   const contractData = [
     ['Contract Analysis Report'],
@@ -87,6 +89,7 @@ export function exportToCSV(data: ExportData, filename: string = 'contract-analy
 
   // Convert to CSV
   const csv = Papa.unparse(contractData)
+  console.log('CSV generated, length:', csv.length)
   
   // Download
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -101,6 +104,8 @@ export function exportToCSV(data: ExportData, filename: string = 'contract-analy
 }
 
 export function exportToExcel(data: ExportData, filename: string = 'contract-analysis') {
+  console.log('exportToExcel called with:', { data, filename })
+  
   // Create a new workbook
   const wb = XLSX.utils.book_new()
 

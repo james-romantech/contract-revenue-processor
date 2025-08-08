@@ -29,6 +29,10 @@ interface ExportButtonsProps {
 
 export function ExportButtons({ contractData, revenueAllocations = [] }: ExportButtonsProps) {
   const handleExportCSV = () => {
+    console.log('CSV Export clicked')
+    console.log('Contract data:', contractData)
+    console.log('Revenue allocations:', revenueAllocations)
+    
     const exportData = {
       contractInfo: {
         filename: contractData.filename,
@@ -43,10 +47,22 @@ export function ExportButtons({ contractData, revenueAllocations = [] }: ExportB
     }
     
     const filename = `contract-${contractData.clientName || 'export'}-${new Date().toISOString().split('T')[0]}`
-    exportToCSV(exportData, filename)
+    console.log('Export data prepared:', exportData)
+    console.log('Filename:', filename)
+    
+    try {
+      exportToCSV(exportData, filename)
+      console.log('CSV export completed')
+    } catch (error) {
+      console.error('CSV export error:', error)
+    }
   }
 
   const handleExportExcel = () => {
+    console.log('Excel Export clicked')
+    console.log('Contract data:', contractData)
+    console.log('Revenue allocations:', revenueAllocations)
+    
     const exportData = {
       contractInfo: {
         filename: contractData.filename,
@@ -61,7 +77,15 @@ export function ExportButtons({ contractData, revenueAllocations = [] }: ExportB
     }
     
     const filename = `contract-${contractData.clientName || 'export'}-${new Date().toISOString().split('T')[0]}`
-    exportToExcel(exportData, filename)
+    console.log('Export data prepared:', exportData)
+    console.log('Filename:', filename)
+    
+    try {
+      exportToExcel(exportData, filename)
+      console.log('Excel export completed')
+    } catch (error) {
+      console.error('Excel export error:', error)
+    }
   }
 
   return (

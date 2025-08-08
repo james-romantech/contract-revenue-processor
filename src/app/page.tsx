@@ -153,7 +153,10 @@ export default function Home() {
             <ContractEditor contractData={contractData} />
             <RevenueCalculator 
               contractData={contractData} 
-              onAllocationsChange={setRevenueAllocations}
+              onAllocationsChange={(allocations) => {
+                console.log('Revenue allocations updated:', allocations)
+                setRevenueAllocations(allocations)
+              }}
             />
             <ExportButtons 
               contractData={contractData} 
