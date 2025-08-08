@@ -247,17 +247,9 @@ export async function extractTextFromFile(file: File): Promise<string> {
             console.log('Azure credentials NOT configured in environment')
           }
           
-          // Don't fall back to pdf2json for scanned PDFs - it won't help
-          console.log('Scanned PDF detected but Azure OCR unavailable or failed')
-          return `This appears to be a scanned PDF (${mergedResult.totalPages} pages).
-
-Azure OCR is required to extract text from scanned documents.
-${azureEndpoint && azureKey ? 'Azure is configured but OCR failed - check logs for errors.' : 'Azure credentials are not configured.'}
-
-For scanned PDFs, you need:
-1. Azure Computer Vision API configured in Vercel
-2. Or use client-side processing (may not work for scanned)
-3. Or convert to a Word document`
+          // Fall back to pdf2json as last resort - it might extract something
+          console.log('Falling back to pdf2json as final attempt...')
+          throw new Error(`Scanned PDF detected: ${mergedResult.totalPages} pages but no text extracted by unpdf or Azure`)
         }
         
         // Only return if we got actual text
@@ -271,11 +263,13 @@ For scanned PDFs, you need:
       } catch (unpdfError) {
         console.error('unpdf extraction issue, falling back to pdf2json:', unpdfError.message || unpdfError)
         
-        // Fall back to pdf2json (with its 7562 char limit)
+        // Fall back to pdf2json - it might handle certain PDF types better
+        // Note: pdf2json has a 7562 character limit but it's better than nothing
         const PDFParser = await import('pdf2json')
         const PDFParserClass = PDFParser.default || PDFParser
         
         return new Promise((resolve, reject) => {
+          console.log('Attempting extraction with pdf2json as fallback...')
           // Create parser with verbosity level 1 and no page limit
           const pdfParser = new PDFParserClass(null, 1)
         
