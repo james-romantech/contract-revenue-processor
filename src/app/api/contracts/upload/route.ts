@@ -144,18 +144,61 @@ export async function POST(request: NextRequest) {
           message: aiError instanceof Error ? aiError.message : 'Unknown error',
           name: aiError instanceof Error ? aiError.name : 'Unknown',
           stack: aiError instanceof Error ? aiError.stack : 'No stack',
-          extractedTextPreview: extractedText.substring(0, 100)
+          extractedTextPreview: extractedText.substring(0, 100),
+          extractedTextLength: extractedText.length
         })
         
-        // Return error instead of falling back
-        return NextResponse.json(
-          { 
-            error: 'AI extraction failed',
-            details: aiError instanceof Error ? aiError.message : 'Unknown error',
-            type: 'AIExtractionError'
-          }, 
-          { status: 500 }
-        )
+        // Create a minimal contract record even if AI extraction fails
+        // This allows the user to see the extracted text and debug
+        contractData = await prisma.contract.create({
+          data: {
+            filename: actualFileName,
+            originalText: extractedText,
+            status: 'needs_review',
+            contractValue: null,
+            startDate: null,
+            endDate: null,
+            clientName: null,
+            description: 'AI extraction failed - manual review required',
+          }
+        })
+
+        // Return partial success with error info
+        return NextResponse.json({
+          success: false,
+          contract: {
+            id: contractData.id,
+            filename: contractData.filename,
+            status: 'needs_review',
+            contractValue: null,
+            startDate: null,
+            endDate: null,
+            clientName: null,
+            description: 'AI extraction failed - manual review required',
+            aiExtractedData: {
+              contractValue: null,
+              startDate: null,
+              endDate: null,
+              clientName: null,
+              description: 'AI extraction failed - manual review required',
+              milestones: [],
+              paymentTerms: null,
+              deliverables: [],
+              confidence: 0,
+              reasoning: `AI extraction error: ${aiError instanceof Error ? aiError.message : 'Unknown error'}`
+            },
+            validation: {
+              isValid: false,
+              errors: ['AI extraction failed'],
+              warnings: [`Error: ${aiError instanceof Error ? aiError.message : 'Unknown error'}`]
+            }
+          },
+          debug: {
+            textLength: extractedText.length,
+            aiSuccess: false,
+            error: aiError instanceof Error ? aiError.message : 'Unknown error'
+          }
+        })
       }
     } else {
       console.log('❌ OpenAI API key not configured properly:', {

@@ -80,14 +80,18 @@ export default function Home() {
       const result = await response.json()
       console.log('Upload response:', result)
       
-      if (!response.ok) {
+      if (!response.ok && !result.contract) {
         throw new Error(result.error || 'Failed to upload file')
       }
 
-      setContractData(result.contract)
+      if (result.contract) {
+        setContractData(result.contract)
+      }
       
       // Show warnings if AI extraction failed
-      if (result.contract?.validation?.warnings?.length > 0) {
+      if (!result.success && result.debug?.error) {
+        setError(`AI extraction issue: ${result.debug.error}. Text was extracted (${result.debug.textLength} chars) but AI couldn't parse contract details.`)
+      } else if (result.contract?.validation?.warnings?.length > 0) {
         setError('Warning: ' + result.contract.validation.warnings.join(', '))
       }
     } catch (err) {

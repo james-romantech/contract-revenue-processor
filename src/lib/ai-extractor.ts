@@ -242,6 +242,20 @@ export async function extractContractDataWithAI(contractText: string): Promise<E
 
   } catch (error) {
     console.error('AI extraction error:', error)
+    
+    // Provide more specific error messages
+    if (error instanceof Error) {
+      if (error.message.includes('401')) {
+        throw new Error('OpenAI API key is invalid or expired')
+      } else if (error.message.includes('429')) {
+        throw new Error('OpenAI rate limit exceeded - please try again in a moment')
+      } else if (error.message.includes('timeout')) {
+        throw new Error('AI extraction timed out - the document may be too long')
+      } else if (error.message.includes('JSON')) {
+        throw new Error('AI returned invalid response format - please try again')
+      }
+    }
+    
     throw new Error(`Failed to extract contract data with AI: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 }
