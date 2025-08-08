@@ -19,7 +19,9 @@ export async function GET() {
   }
   
   // Check if they look valid
-  const keyLooksValid = key.length === 32 && /^[a-f0-9]+$/i.test(key)
+  // Azure keys can be 32 chars (old format) or 84+ chars (new format with base64)
+  const keyLooksValid = (key.length === 32 && /^[a-f0-9]+$/i.test(key)) || 
+                        (key.length >= 80 && key.length <= 90)
   const endpointLooksValid = endpoint.startsWith('https://') && endpoint.includes('cognitiveservices.azure.com')
   
   if (!keyLooksValid || !endpointLooksValid) {
@@ -28,7 +30,7 @@ export async function GET() {
       message: 'Azure credentials are set but may be invalid',
       details: {
         keyLength: key.length,
-        keyFormat: keyLooksValid ? 'Valid format' : 'Invalid format (should be 32 hex characters)',
+        keyFormat: keyLooksValid ? 'Valid format' : 'Invalid format (Azure keys are typically 32 or 84 characters)',
         endpointFormat: endpointLooksValid ? 'Valid format' : 'Invalid format (should be https://YOUR-RESOURCE.cognitiveservices.azure.com/)',
         endpointValue: endpoint.substring(0, 30) + '...'
       }
