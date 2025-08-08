@@ -117,126 +117,127 @@ export function exportToExcel(data: ExportData, filename: string = 'contract-ana
   // Create a new workbook
   const wb = XLSX.utils.book_new()
 
-  // Sheet 1: Contract Information
-  const contractInfo = [
-    ['Contract Analysis Report'],
-    ['Generated:', new Date().toISOString()],
-    [],
-    ['Contract Information'],
-    [],
-    ['Field', 'Value'],
-    ['File Name', data.contractInfo.filename],
-    ['Client Name', data.contractInfo.clientName || 'Not specified'],
-    ['Contract Value', data.contractInfo.contractValue ? `$${formatCurrency(data.contractInfo.contractValue)}` : ''],
-    ['Start Date', formatDate(data.contractInfo.startDate)],
-    ['End Date', formatDate(data.contractInfo.endDate)],
-    ['Description', data.contractInfo.description || 'Not specified']
-  ]
-  
-  const wsContract = XLSX.utils.aoa_to_sheet(contractInfo)
-  
-  // Set column widths
-  wsContract['!cols'] = [
-    { wch: 20 }, // Field column
-    { wch: 50 }  // Value column
-  ]
-  
-  XLSX.utils.book_append_sheet(wb, wsContract, 'Contract Info')
-
-  // Sheet 2: Milestones (if any)
-  if (data.milestones && data.milestones.length > 0) {
-    const milestonesData = [
-      ['Milestones'],
-      [],
-      ['Name', 'Amount', 'Due Date']
-    ]
-    
-    data.milestones.forEach(milestone => {
-      const amount = typeof milestone.amount === 'number' ? milestone.amount : parseFloat(String(milestone.amount)) || 0
-      milestonesData.push([
-        milestone.name,
-        amount,
-        formatDate(milestone.dueDate)
-      ])
-    })
-    
-    // Add total
-    const totalMilestones = data.milestones.reduce((sum, m) => {
-      const amount = typeof m.amount === 'number' ? m.amount : parseFloat(String(m.amount)) || 0
-      return sum + amount
-    }, 0)
-    milestonesData.push([])
-    milestonesData.push(['Total', totalMilestones, ''])
-    
-    const wsMilestones = XLSX.utils.aoa_to_sheet(milestonesData)
-    
-    // Format currency columns
-    if (wsMilestones['B4']) {
-      for (let i = 4; i <= milestonesData.length; i++) {
-        const cell = wsMilestones[`B${i}`]
-        if (cell && typeof cell.v === 'number') {
-          cell.z = '$#,##0.00'
-        }
-      }
-    }
-    
-    // Set column widths
-    wsMilestones['!cols'] = [
-      { wch: 30 }, // Name
-      { wch: 15 }, // Amount
-      { wch: 15 }  // Date
-    ]
-    
-    XLSX.utils.book_append_sheet(wb, wsMilestones, 'Milestones')
-  }
-
-  // Sheet 3: Revenue Recognition Schedule (if any)
+  // Sheet 1: Revenue Schedule (with contract info on each row)
   if (data.revenueAllocations && data.revenueAllocations.length > 0) {
     const revenueData = [
-      ['Revenue Recognition Schedule'],
-      [],
-      ['Description', 'Amount', 'Recognition Date', 'Type']
+      ['File Name', 'Client Name', 'Contract Value', 'Contract Description', 'Revenue Description', 'Amount', 'Recognition Date']
     ]
     
     data.revenueAllocations.forEach(allocation => {
       const amount = typeof allocation.amount === 'number' ? allocation.amount : parseFloat(String(allocation.amount)) || 0
       revenueData.push([
+        data.contractInfo.filename,
+        data.contractInfo.clientName || '',
+        data.contractInfo.contractValue || 0,
+        data.contractInfo.description || '',
         allocation.description,
         amount,
-        formatDate(allocation.recognitionDate),
-        allocation.type
+        formatDate(allocation.recognitionDate)
       ])
     })
-    
-    // Add total
-    const totalRevenue = data.revenueAllocations.reduce((sum, a) => {
-      const amount = typeof a.amount === 'number' ? a.amount : parseFloat(String(a.amount)) || 0
-      return sum + amount
-    }, 0)
-    revenueData.push([])
-    revenueData.push(['Total', totalRevenue, '', ''])
     
     const wsRevenue = XLSX.utils.aoa_to_sheet(revenueData)
     
     // Format currency columns
-    if (wsRevenue['B4']) {
-      for (let i = 4; i <= revenueData.length; i++) {
-        const cell = wsRevenue[`B${i}`]
-        if (cell && typeof cell.v === 'number') {
-          cell.z = '$#,##0.00'
+    if (wsRevenue['C2'] && wsRevenue['F2']) {
+      for (let i = 2; i <= revenueData.length; i++) {
+        // Contract Value column (C)
+        const cellC = wsRevenue[`C${i}`]
+        if (cellC && typeof cellC.v === 'number') {
+          cellC.z = '$#,##0.00'
+        }
+        // Amount column (F)
+        const cellF = wsRevenue[`F${i}`]
+        if (cellF && typeof cellF.v === 'number') {
+          cellF.z = '$#,##0.00'
         }
       }
     }
     
     // Set column widths
     wsRevenue['!cols'] = [
-      { wch: 40 }, // Description
+      { wch: 40 }, // File Name
+      { wch: 25 }, // Client Name
+      { wch: 15 }, // Contract Value
+      { wch: 50 }, // Contract Description
+      { wch: 40 }, // Revenue Description
       { wch: 15 }, // Amount
-      { wch: 15 }, // Date
-      { wch: 15 }  // Type
+      { wch: 15 }  // Recognition Date
     ]
     
     XLSX.utils.book_append_sheet(wb, wsRevenue, 'Revenue Schedule')
+  }
+
+  // Sheet 2: Billing Schedule (Milestones)
+  if (data.milestones && data.milestones.length > 0) {
+    const billingData = [
+      ['File Name', 'Client Name', 'Contract Value', 'Contract Description', 'Milestone Name', 'Amount', 'Due Date']
+    ]
+    
+    data.milestones.forEach(milestone => {
+      const amount = typeof milestone.amount === 'number' ? milestone.amount : parseFloat(String(milestone.amount)) || 0
+      billingData.push([
+        data.contractInfo.filename,
+        data.contractInfo.clientName || '',
+        data.contractInfo.contractValue || 0,
+        data.contractInfo.description || '',
+        milestone.name,
+        amount,
+        formatDate(milestone.dueDate)
+      ])
+    })
+    
+    const wsBilling = XLSX.utils.aoa_to_sheet(billingData)
+    
+    // Format currency columns
+    if (wsBilling['C2'] && wsBilling['F2']) {
+      for (let i = 2; i <= billingData.length; i++) {
+        // Contract Value column (C)
+        const cellC = wsBilling[`C${i}`]
+        if (cellC && typeof cellC.v === 'number') {
+          cellC.z = '$#,##0.00'
+        }
+        // Amount column (F)
+        const cellF = wsBilling[`F${i}`]
+        if (cellF && typeof cellF.v === 'number') {
+          cellF.z = '$#,##0.00'
+        }
+      }
+    }
+    
+    // Set column widths
+    wsBilling['!cols'] = [
+      { wch: 40 }, // File Name
+      { wch: 25 }, // Client Name
+      { wch: 15 }, // Contract Value
+      { wch: 50 }, // Contract Description
+      { wch: 30 }, // Milestone Name
+      { wch: 15 }, // Amount
+      { wch: 15 }  // Due Date
+    ]
+    
+    XLSX.utils.book_append_sheet(wb, wsBilling, 'Billing Schedule')
+  } else {
+    // If no milestones, create an empty Billing Schedule with just headers
+    const billingData = [
+      ['File Name', 'Client Name', 'Contract Value', 'Contract Description', 'Milestone Name', 'Amount', 'Due Date'],
+      ['No billing milestones found', '', '', '', '', '', '']
+    ]
+    
+    const wsBilling = XLSX.utils.aoa_to_sheet(billingData)
+    
+    // Set column widths
+    wsBilling['!cols'] = [
+      { wch: 40 }, // File Name
+      { wch: 25 }, // Client Name
+      { wch: 15 }, // Contract Value
+      { wch: 50 }, // Contract Description
+      { wch: 30 }, // Milestone Name
+      { wch: 15 }, // Amount
+      { wch: 15 }  // Due Date
+    ]
+    
+    XLSX.utils.book_append_sheet(wb, wsBilling, 'Billing Schedule')
   }
 
   // Generate and download the Excel file
