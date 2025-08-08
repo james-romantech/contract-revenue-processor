@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Test endpoint to verify full PDF is being sent to Azure
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
@@ -19,27 +20,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Azure not configured' }, { status: 500 })
     }
     
-    console.log(`Processing ${file.name}, size: ${buffer.length} bytes (${(buffer.length / 1024).toFixed(2)} KB)`)
-    
-    // Log file details
+    console.log('Testing full PDF extraction with Azure S1 tier')
     console.log('File details:', {
       name: file.name,
-      type: file.type,
       size: file.size,
-      bufferLength: buffer.length,
-      bufferMatchesFileSize: buffer.length === file.size
+      sizeKB: (file.size / 1024).toFixed(2) + ' KB',
+      bufferLength: buffer.length
     })
     
-    // Submit to Azure
+    // Try different API versions and parameters
     const cleanEndpoint = endpoint.replace(/\/+$/, '')
-    const readUrl = `${cleanEndpoint}/vision/v3.2/read/analyze`
     
-    // Explicitly request all pages for S1 tier
-    const analyzeUrl = `${readUrl}`
+    // Test 1: Default Read API
+    const defaultUrl = `${cleanEndpoint}/vision/v3.2/read/analyze`
     
-    console.log('Submitting to Azure with URL:', analyzeUrl)
+    // Test 2: With explicit page range
+    const withPagesUrl = `${cleanEndpoint}/vision/v3.2/read/analyze?pages=1-100`
     
-    const analyzeResponse = await fetch(analyzeUrl, {
+    // Test 3: Latest API version
+    const latestUrl = `${cleanEndpoint}/vision/v4.0/read/analyze`
+    
+    // Use the default URL (can switch to test others)
+    const testUrl = defaultUrl
+    
+    console.log('Using URL:', testUrl)
+    
+    const analyzeResponse = await fetch(testUrl, {
       method: 'POST',
       headers: {
         'Ocp-Apim-Subscription-Key': apiKey,
@@ -53,7 +59,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         error: 'Azure API error',
         status: analyzeResponse.status,
-        detail: errorText
+        detail: errorText,
+        url: testUrl
       }, { status: 500 })
     }
     
@@ -62,13 +69,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No operation location' }, { status: 500 })
     }
     
-    // Wait for results - longer wait for multi-page docs
+    console.log('Operation location:', operationLocation)
+    
+    // Wait for results with longer timeout for S1 tier
     let result
     let attempts = 0
-    const maxAttempts = 60
+    const maxAttempts = 120 // 4 minutes max
     
     while (attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 2000)) // 2 second wait
+      await new Promise(resolve => setTimeout(resolve, 2000))
       
       const resultResponse = await fetch(operationLocation, {
         headers: { 'Ocp-Apim-Subscription-Key': apiKey }
@@ -82,7 +91,8 @@ export async function POST(request: NextRequest) {
       }
       
       result = await resultResponse.json()
-      console.log(`Attempt ${attempts + 1}: Status = ${result.status}`)
+      
+      console.log(`Attempt ${attempts + 1}: Status = ${result.status}, Pages found = ${result.analyzeResult?.readResults?.length || 0}`)
       
       if (result.status === 'succeeded') {
         break
@@ -99,39 +109,31 @@ export async function POST(request: NextRequest) {
     if (!result || result.status !== 'succeeded') {
       return NextResponse.json({
         error: 'OCR timed out',
-        lastStatus: result?.status
+        lastStatus: result?.status,
+        attempts: attempts
       }, { status: 500 })
     }
     
-    // Analyze the results
-    let pageDetails = []
+    // Extract detailed page information
+    let pageInfo = []
     let fullText = ''
-    let totalCharacters = 0
     
     if (result.analyzeResult?.readResults) {
+      console.log(`Azure returned ${result.analyzeResult.readResults.length} pages`)
+      
       for (const page of result.analyzeResult.readResults) {
-        let pageText = ''
+        const pageText = page.lines?.map((line: any) => line.text).join('\n') || ''
         
-        // Add page marker
-        pageText += `\n--- Page ${page.page} ---\n`
-        
-        // Add all lines
-        for (const line of page.lines || []) {
-          pageText += line.text + '\n'
-        }
-        
-        pageDetails.push({
+        pageInfo.push({
           pageNumber: page.page,
+          lineCount: page.lines?.length || 0,
+          characterCount: pageText.length,
           width: page.width,
           height: page.height,
-          angle: page.angle,
-          unit: page.unit,
-          lineCount: page.lines?.length || 0,
-          characterCount: pageText.length
+          unit: page.unit
         })
         
-        fullText += pageText
-        totalCharacters += pageText.length
+        fullText += `\n--- Page ${page.page} ---\n${pageText}\n`
       }
     }
     
@@ -140,28 +142,28 @@ export async function POST(request: NextRequest) {
       file: {
         name: file.name,
         size: file.size,
-        sizeKB: (file.size / 1024).toFixed(2)
+        sizeKB: (file.size / 1024).toFixed(2) + ' KB'
       },
       azure: {
-        status: result.status,
-        pageCount: result.analyzeResult?.readResults?.length || 0,
-        modelVersion: result.analyzeResult?.modelVersion,
-        readTime: result.analyzeResult?.readTime
+        url: testUrl,
+        tier: 'S1 (Developer)',
+        pagesProcessed: pageInfo.length,
+        totalCharacters: fullText.length
       },
+      pages: pageInfo,
       extraction: {
-        totalCharacters: totalCharacters,
-        totalPages: pageDetails.length,
-        charactersPerPage: pageDetails.length > 0 ? Math.round(totalCharacters / pageDetails.length) : 0,
-        pageDetails: pageDetails
+        firstPage: fullText.substring(0, 500),
+        lastPage: fullText.substring(Math.max(0, fullText.length - 500))
       },
-      textPreview: fullText.substring(0, 1000),
-      lastTextPreview: fullText.substring(Math.max(0, fullText.length - 500)),
-      fullText: fullText,
-      rawAzureResult: result // Include raw Azure response for debugging
+      debug: {
+        operationLocation: operationLocation,
+        attempts: attempts,
+        modelVersion: result.analyzeResult?.modelVersion
+      }
     })
     
   } catch (error) {
-    console.error('Azure OCR debug error:', error)
+    console.error('Test full PDF error:', error)
     return NextResponse.json({
       error: 'Exception occurred',
       message: error instanceof Error ? error.message : 'Unknown error'
