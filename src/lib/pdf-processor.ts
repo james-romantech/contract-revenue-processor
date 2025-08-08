@@ -192,38 +192,26 @@ async function performOCRWithAzureChunk(buffer: Buffer): Promise<string> {
 
 // Azure OCR - handles both F0 (2-page limit) and S1 (2000-page limit) tiers
 async function performOCRWithAzure(buffer: Buffer): Promise<string> {
-  const endpoint = process.env.AZURE_COMPUTER_VISION_ENDPOINT
-  const apiKey = process.env.AZURE_COMPUTER_VISION_KEY
-  
-  // For S1 tier, we can process the entire PDF at once
-  // The issue before was likely a timeout or API version problem
-  // Let's try direct processing first
   try {
-    console.log('Attempting direct Azure OCR processing (S1 tier - up to 2000 pages)...')
+    console.log('Processing with Azure OCR...')
     const result = await performOCRWithAzureChunk(buffer)
     
-    // Check if we only got 2 pages when we expected more
+    // Check how many pages were processed
     const pageMatches = result.match(/--- Page \d+ ---/g) || []
-    console.log(`Direct processing returned ${pageMatches.length} pages`)
+    console.log(`Azure OCR processed ${pageMatches.length} pages`)
     
-    // If we got more than 2 pages, S1 is working correctly
-    if (pageMatches.length > 2) {
-      console.log('S1 tier processing successful - all pages extracted')
-      return result
-    }
-    
-    // If we only got 2 pages, might be F0 tier or an issue
-    // Fall back to chunking
-    if (pageMatches.length <= 2 && buffer.length > 100000) { // If file is large but only 2 pages extracted
-      console.log('Only 2 pages extracted, falling back to chunked processing...')
+    // S1 tier processes all pages, F0 tier only processes 2
+    // If we only got 2 pages but the buffer is large, user might be on F0 tier
+    if (pageMatches.length === 2 && buffer.length > 200000) { 
+      console.log('Only 2 pages extracted from large file - possible F0 tier, using chunked processing...')
       return await processLargePDFWithAzure(buffer, performOCRWithAzureChunk)
     }
     
+    // S1 tier or small document - return direct result
     return result
   } catch (error) {
-    console.error('Direct processing failed, using chunked approach:', error)
-    // Fallback to chunked processing
-    return await processLargePDFWithAzure(buffer, performOCRWithAzureChunk)
+    console.error('Azure OCR error:', error)
+    throw error
   }
 }
 
