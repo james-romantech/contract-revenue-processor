@@ -241,27 +241,27 @@ export async function extractTextFromFile(file: File): Promise<string> {
         console.log(`PDF text extraction completed with unpdf: ${totalPages} pages, ${totalChars} total characters`)
         
         // Check for the suspicious 7562 character limit
-        if (totalChars === 7562) {
-          console.warn('⚠️ WARNING: unpdf extracted exactly 7562 characters - suspicious limit!')
-          console.log('This might be a partial extraction. Attempting Azure OCR for complete text...')
+        if (totalChars === 7562 || totalChars === 7561 || totalChars === 7563) {
+          console.warn('⚠️ WARNING: unpdf extracted ~7562 characters - suspicious limit detected!')
+          console.log(`unpdf got exactly ${totalChars} chars - this is likely truncated. Using Azure OCR instead...`)
           
-          // Try Azure OCR even though we got some text
+          // Try Azure OCR to get the COMPLETE text
           const azureEndpoint = process.env.AZURE_COMPUTER_VISION_ENDPOINT
           const azureKey = process.env.AZURE_COMPUTER_VISION_KEY
           
           if (azureEndpoint && azureKey) {
             try {
-              console.log('Attempting Azure OCR to get complete text...')
+              console.log('Calling Azure OCR to get complete document text...')
               const ocrText = await performOCRWithAzure(buffer)
-              console.log(`Azure OCR result: ${ocrText ? ocrText.length : 0} characters`)
+              const ocrLength = ocrText ? ocrText.trim().length : 0
+              console.log(`Azure OCR extracted: ${ocrLength} characters`)
               
-              if (ocrText && ocrText.trim().length > totalChars) {
-                console.log(`Azure OCR extracted ${ocrText.length} chars vs unpdf's ${totalChars} chars - using Azure`)
+              if (ocrText && ocrLength > 0) {
+                // ALWAYS use Azure when we hit the 7562 limit, even if counts are similar
+                console.log(`✅ Using Azure OCR (${ocrLength} chars) instead of truncated unpdf (${totalChars} chars)`)
                 return ocrText
-              } else if (ocrText && ocrText.trim().length > 0) {
-                console.log(`Azure OCR got ${ocrText.length} chars but unpdf already has ${totalChars} - keeping unpdf`)
               } else {
-                console.log('Azure OCR returned no text')
+                console.log('Azure OCR returned no text, keeping unpdf result')
               }
             } catch (ocrError) {
               console.error('Azure OCR failed at 7562 limit check:', ocrError)
@@ -269,6 +269,7 @@ export async function extractTextFromFile(file: File): Promise<string> {
                 message: ocrError instanceof Error ? ocrError.message : 'Unknown',
                 name: ocrError instanceof Error ? ocrError.name : 'Unknown'
               })
+              // Keep unpdf result if Azure fails
             }
           } else {
             console.log('Azure credentials not available for 7562 limit workaround')
