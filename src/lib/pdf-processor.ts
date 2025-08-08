@@ -177,15 +177,24 @@ export async function extractTextFromFile(file: File): Promise<string> {
             return `[Extracted from ${mergedResult.totalPages} pages]\n\n${mergedText}`
           }
           
-          // If still no text, might be scanned PDF - throw to trigger fallback
-          console.log('unpdf extracted 0 characters - might be scanned PDF, falling back to pdf2json...')
-          throw new Error('No text extracted by unpdf - possible scanned PDF')
+          // unpdf found pages but no text - this is likely a scanned PDF
+          console.log(`unpdf found ${mergedResult.totalPages} pages but extracted 0 characters - likely scanned PDF`)
+          console.log('Falling back to pdf2json to see if it can extract any text...')
+          
+          // Set a flag to indicate we should try pdf2json
+          throw new Error(`Scanned PDF detected: ${mergedResult.totalPages} pages but no text extracted`)
         }
         
-        return fullText.trim()
+        // Only return if we got actual text
+        if (fullText.trim().length > 0) {
+          return fullText.trim()
+        }
+        
+        // If we get here with no text, fall through to pdf2json
+        throw new Error('unpdf extracted no text - trying pdf2json')
         
       } catch (unpdfError) {
-        console.error('unpdf extraction failed, falling back to pdf2json:', unpdfError)
+        console.error('unpdf extraction issue, falling back to pdf2json:', unpdfError.message || unpdfError)
         
         // Fall back to pdf2json (with its 7562 char limit)
         const PDFParser = await import('pdf2json')
