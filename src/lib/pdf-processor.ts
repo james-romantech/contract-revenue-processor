@@ -86,10 +86,10 @@ async function performOCRWithAzure(buffer: Buffer): Promise<string> {
     // Step 2: Poll for results
     let result
     let attempts = 0
-    const maxAttempts = 30 // 30 seconds max wait
+    const maxAttempts = 60 // 60 seconds max wait for multi-page documents
     
     while (attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second
+      await new Promise(resolve => setTimeout(resolve, 1500)) // Wait 1.5 seconds
       
       const resultResponse = await fetch(operationLocation, {
         headers: {
@@ -128,7 +128,9 @@ async function performOCRWithAzure(buffer: Buffer): Promise<string> {
     let fullText = ''
     
     if (result.analyzeResult && result.analyzeResult.readResults) {
+      console.log(`Azure OCR found ${result.analyzeResult.readResults.length} pages to process`)
       for (const page of result.analyzeResult.readResults) {
+        console.log(`Processing Azure page ${page.page}: ${page.lines?.length || 0} lines`)
         // First, check if there are tables detected
         if (result.analyzeResult.pageResults && result.analyzeResult.pageResults.length > 0) {
           const pageResult = result.analyzeResult.pageResults.find((pr: any) => pr.page === page.page)
@@ -149,11 +151,17 @@ async function performOCRWithAzure(buffer: Buffer): Promise<string> {
           }
         }
         
+        // Add page marker
+        fullText += `\n--- Page ${page.page} ---\n`
+        
         // Then add regular lines
         for (const line of page.lines || []) {
           fullText += line.text + '\n'
         }
+        
+        console.log(`Page ${page.page} added ${fullText.length} total characters so far`)
       }
+      console.log(`Azure OCR processed ${result.analyzeResult.readResults.length} pages total`)
     }
     
     console.log('Azure Computer Vision OCR completed, text length:', fullText.length)
