@@ -120,16 +120,52 @@ export async function extractTextFromFile(file: File): Promise<string> {
   
   if (file.type === 'application/pdf') {
     try {
-      console.log('Processing PDF document with pdf2json...')
+      console.log('Processing PDF document with unpdf...')
       console.log('Buffer length:', buffer.length)
       
-      // Dynamic import to avoid build issues
-      const PDFParser = await import('pdf2json')
-      const PDFParserClass = PDFParser.default || PDFParser
-      
-      return new Promise((resolve, reject) => {
-        // Create parser with verbosity level 1 and no page limit
-        const pdfParser = new PDFParserClass(null, 1)
+      // Try unpdf first (no character limits!)
+      try {
+        const { extractText, getDocumentProxy } = await import('unpdf')
+        
+        // Convert buffer to Uint8Array for unpdf
+        const uint8Array = new Uint8Array(buffer)
+        
+        // Load the PDF
+        const pdf = await getDocumentProxy(uint8Array)
+        console.log('PDF loaded successfully with unpdf')
+        
+        // Extract text with page information
+        const { totalPages, text } = await extractText(pdf, { mergePages: false })
+        console.log(`unpdf extracted ${totalPages} pages, total text length: ${text.length}`)
+        
+        // Format the text with page markers
+        let fullText = ''
+        if (Array.isArray(text)) {
+          // text is an array when mergePages is false
+          for (let i = 0; i < text.length; i++) {
+            if (text[i]) {
+              fullText += text[i]
+              fullText += `\n--- Page ${i + 1} ---\n`
+            }
+          }
+        } else {
+          // Single text string
+          fullText = text
+        }
+        
+        console.log(`PDF text extraction completed with unpdf: ${totalPages} pages, ${fullText.length} characters`)
+        return fullText.trim()
+        
+      } catch (unpdfError) {
+        console.error('unpdf extraction failed, falling back to pdf2json:', unpdfError)
+        
+        // Fall back to pdf2json (with its 7562 char limit)
+        const PDFParser = await import('pdf2json')
+        const PDFParserClass = PDFParser.default || PDFParser
+        
+        return new Promise((resolve, reject) => {
+          // Create parser with verbosity level 1 and no page limit
+          const pdfParser = new PDFParserClass(null, 1)
         
         let pagesProcessedBeforeTimeout = 0
         let partialText = ''
@@ -356,6 +392,7 @@ File: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
         // Parse the PDF buffer
         pdfParser.parseBuffer(buffer)
       })
+      }
       
     } catch (error) {
       console.error('PDF processing failed:', error)
