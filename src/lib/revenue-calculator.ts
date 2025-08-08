@@ -71,7 +71,7 @@ function calculateMilestoneRevenue(
 ): RevenueAllocation[] {
   return milestones.map(milestone => ({
     amount: milestone.amount,
-    recognitionDate: milestone.dueDate,
+    recognitionDate: endOfMonth(milestone.dueDate),
     type: 'milestone' as const,
     description: `Milestone: ${milestone.name}`
   }))
@@ -111,7 +111,7 @@ function calculateBilledBasisRevenue(
 ): RevenueAllocation[] {
   return milestones.map((milestone, index) => ({
     amount: milestone.amount,
-    recognitionDate: milestone.dueDate,
+    recognitionDate: endOfMonth(milestone.dueDate),
     type: 'billed' as const,
     description: `Billed amount ${index + 1}: ${milestone.name}`
   }))

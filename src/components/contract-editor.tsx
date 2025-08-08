@@ -366,7 +366,7 @@ export function ContractEditor({ contractData, onSave }: ContractEditorProps) {
           <h3 className="font-medium text-gray-700 mb-2">AI Analysis</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <p><span className="font-medium">Confidence:</span> {(aiData.confidence * 100).toFixed(1)}%</p>
+              <p><span className="font-medium">Confidence:</span> {(aiData.confidence <= 1 ? aiData.confidence * 100 : aiData.confidence).toFixed(1)}%</p>
               <p><span className="font-medium">Payment Terms:</span> {aiData.paymentTerms || 'Not detected'}</p>
             </div>
             <div>

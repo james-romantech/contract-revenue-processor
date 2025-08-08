@@ -107,7 +107,7 @@ IMPORTANT: Return ONLY a valid JSON object. Do not include any text before or af
   ],
   "paymentTerms": string | null,
   "deliverables": [string],
-  "confidence": number,
+  "confidence": number between 0 and 1 (e.g., 0.95 for 95% confidence),
   "reasoning": string
 }
 
@@ -226,7 +226,15 @@ export async function extractContractDataWithAI(contractText: string): Promise<E
       milestones: Array.isArray(extractedData.milestones) ? extractedData.milestones : [],
       paymentTerms: extractedData.paymentTerms || null,
       deliverables: Array.isArray(extractedData.deliverables) ? extractedData.deliverables : [],
-      confidence: extractedData.confidence || 0,
+      confidence: (() => {
+        const rawConfidence = extractedData.confidence || 0;
+        console.log('Raw confidence from AI:', rawConfidence);
+        // If > 1, assume it's a percentage and convert to decimal
+        const normalized = rawConfidence > 1 ? rawConfidence / 100 : rawConfidence;
+        console.log('Normalized confidence:', normalized);
+        // Ensure it's between 0 and 1
+        return Math.min(1, Math.max(0, normalized));
+      })(),
       reasoning: extractedData.reasoning || 'No reasoning provided'
     }
 
