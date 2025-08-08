@@ -126,14 +126,34 @@ export default function DebugPage() {
                   </div>
                 </div>
                 
-                {/* Warning if we hit the 7562 character limit */}
+                {/* Warning or success message about processing method */}
                 {result.extraction.is7562Limit && (
-                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded">
-                    <p className="text-sm font-semibold text-red-800 mb-1">⚠️ pdf2json Character Limit Detected</p>
-                    <p className="text-xs text-red-700">
-                      Extraction stopped at exactly 7,562 characters. This appears to be a pdf2json limitation.
-                      Some pages may not have been extracted. Try using client-side processing or convert to Word format.
+                  <div className={`mt-4 p-3 rounded ${
+                    result.extraction.hasOCRMarkers 
+                      ? 'bg-green-50 border border-green-200' 
+                      : 'bg-red-50 border border-red-200'
+                  }`}>
+                    <p className={`text-sm font-semibold mb-1 ${
+                      result.extraction.hasOCRMarkers ? 'text-green-800' : 'text-red-800'
+                    }`}>
+                      {result.extraction.hasOCRMarkers 
+                        ? '✅ Azure OCR Successfully Processed Document' 
+                        : '⚠️ PDF Extraction Hit 7,562 Character Limit'}
                     </p>
+                    <p className={`text-xs ${
+                      result.extraction.hasOCRMarkers ? 'text-green-700' : 'text-red-700'
+                    }`}>
+                      {result.extraction.hasOCRMarkers 
+                        ? `Azure OCR extracted ${result.extraction.textLength.toLocaleString()} characters from ${result.extraction.pageCount || result.extraction.estimatedPages} pages. All content should be complete.`
+                        : 'Extraction may be incomplete. Enable server-side processing with Azure OCR configured for full extraction.'}
+                    </p>
+                  </div>
+                )}
+                
+                {/* Show processing method */}
+                {result.extraction.processingMethod && (
+                  <div className="mt-2 text-xs text-gray-600">
+                    Processing Method: <span className="font-semibold">{result.extraction.processingMethod}</span>
                   </div>
                 )}
                 

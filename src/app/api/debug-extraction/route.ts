@@ -40,8 +40,13 @@ export async function POST(request: NextRequest) {
     // Get last 1000 chars to see if we got end of document
     const lastChars = extractedText.substring(Math.max(0, extractedText.length - 1000))
     
-    // Check if we hit the suspicious 7562 character limit
-    const is7562Limit = extractedText.length === 7562
+    // Check if we hit the suspicious 7562 character limit (±5 chars for variation)
+    const is7562Limit = extractedText.length >= 7557 && extractedText.length <= 7567
+    
+    // Check if text contains Azure OCR markers or evidence of OCR processing
+    const hasOCRMarkers = extractedText.includes('[TABLE DETECTED]') || 
+                          extractedText.includes('[END TABLE]') ||
+                          pageMarkers.length > 1
     
     return NextResponse.json({
       success: true,
@@ -58,6 +63,8 @@ export async function POST(request: NextRequest) {
         formFeedCount: formFeedCount,
         pageBreakPatterns: pageBreakPatterns,
         is7562Limit: is7562Limit,
+        hasOCRMarkers: hasOCRMarkers,
+        processingMethod: hasOCRMarkers ? 'Azure OCR' : (is7562Limit ? 'Truncated PDF extraction' : 'Full PDF extraction'),
         // First 5000 chars to see what was extracted
         textPreview: extractedText.substring(0, 5000),
         lastTextPreview: lastChars,
