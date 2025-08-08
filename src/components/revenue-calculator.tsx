@@ -56,21 +56,33 @@ export function RevenueCalculator({ contractData }: RevenueCalculatorProps) {
       endDate = contractData.endDate
     }
 
+    // Parse dates carefully to avoid timezone issues
+    const parseDate = (dateStr: string) => {
+      // If date is in YYYY-MM-DD format, parse as local date not UTC
+      if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateStr.split('-').map(Number)
+        return new Date(year, month - 1, day, 12, 0, 0) // Set to noon local time
+      }
+      return new Date(dateStr)
+    }
+
     const params: RevenueCalculationParams = {
       totalValue: contractData.contractValue!,
-      startDate: new Date(startDate!),
-      endDate: new Date(endDate!),
+      startDate: parseDate(startDate!),
+      endDate: parseDate(endDate!),
       allocationType,
       milestones: contractData.aiExtractedData?.milestones.map(m => {
+        const parsedDate = parseDate(m.dueDate)
         console.log('Milestone date conversion:', {
           original: m.dueDate,
-          converted: new Date(m.dueDate),
-          isoString: new Date(m.dueDate).toISOString()
+          parsed: parsedDate,
+          isoString: parsedDate.toISOString(),
+          localString: parsedDate.toLocaleDateString()
         });
         return {
           name: m.name,
           amount: m.amount,
-          dueDate: new Date(m.dueDate)
+          dueDate: parsedDate
         };
       }) || []
     }
