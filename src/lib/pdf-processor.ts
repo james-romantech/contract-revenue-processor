@@ -136,24 +136,52 @@ export async function extractTextFromFile(file: File): Promise<string> {
         
         // Extract text with page information
         const { totalPages, text } = await extractText(pdf, { mergePages: false })
-        console.log(`unpdf extracted ${totalPages} pages, total text length: ${text.length}`)
         
         // Format the text with page markers
         let fullText = ''
+        let totalChars = 0
+        
         if (Array.isArray(text)) {
           // text is an array when mergePages is false
+          console.log(`unpdf found ${totalPages} pages, processing each page...`)
           for (let i = 0; i < text.length; i++) {
-            if (text[i]) {
-              fullText += text[i]
-              fullText += `\n--- Page ${i + 1} ---\n`
+            const pageText = text[i] || ''
+            console.log(`  Page ${i + 1}: ${pageText.length} characters`)
+            totalChars += pageText.length
+            
+            // Add page marker before text
+            fullText += `--- Page ${i + 1} ---\n`
+            if (pageText.trim()) {
+              fullText += pageText + '\n'
+            } else {
+              fullText += '[No text on this page]\n'
             }
           }
         } else {
-          // Single text string
-          fullText = text
+          // Single text string (shouldn't happen with mergePages: false)
+          fullText = text || ''
+          totalChars = fullText.length
         }
         
-        console.log(`PDF text extraction completed with unpdf: ${totalPages} pages, ${fullText.length} characters`)
+        console.log(`PDF text extraction completed with unpdf: ${totalPages} pages, ${totalChars} total characters`)
+        
+        // If we got no text at all, try with mergePages: true
+        if (totalChars === 0) {
+          console.log('No text extracted with mergePages:false, trying with mergePages:true...')
+          const mergedResult = await extractText(pdf, { mergePages: true })
+          const mergedText = typeof mergedResult.text === 'string' ? mergedResult.text : ''
+          console.log(`Merged extraction: ${mergedResult.totalPages} pages, ${mergedText.length} characters`)
+          
+          if (mergedText && mergedText.length > 0) {
+            // Add page count info even if we can't separate pages
+            return `[Extracted from ${mergedResult.totalPages} pages]\n\n${mergedText}`
+          }
+          
+          // If still no text, might be scanned PDF - throw to trigger fallback
+          console.log('unpdf extracted 0 characters - might be scanned PDF, falling back to pdf2json...')
+          throw new Error('No text extracted by unpdf - possible scanned PDF')
+        }
+        
         return fullText.trim()
         
       } catch (unpdfError) {
