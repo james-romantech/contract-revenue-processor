@@ -69,6 +69,10 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 /* Typography */
@@ -352,6 +356,30 @@ input:focus, textarea:focus, select:focus {
 [data-theme="dark"] select:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.1);
+}
+
+/* Container Classes */
+.container-center {
+  width: 100%;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container-center {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-center {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
 }
 
 /* Utility Classes */

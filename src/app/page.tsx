@@ -128,8 +128,8 @@ export default function Home() {
           <div className="absolute top-1/3 right-1/4 w-64 h-64 md:w-96 md:h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000" />
           <div className="absolute bottom-1/4 left-1/3 w-64 h-64 md:w-96 md:h-96 bg-indigo-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000" />
           
-          {/* Content Container */}
-          <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          {/* Content Container - Fixed Centering */}
+          <div className="relative z-10 w-full flex flex-col items-center justify-center px-4 sm:px-6 lg:px-8 py-12">
             {/* Hero Header */}
             <div className={`text-center mb-12 ${mounted ? 'slide-up' : 'opacity-0'}`}>
               {/* Logo */}
@@ -189,7 +189,7 @@ export default function Home() {
             </div>
 
             {/* Upload Section */}
-            <div className="w-full max-w-3xl mx-auto px-4">
+            <div className="w-full max-w-3xl">
               <div className="glass-effect rounded-2xl p-6 sm:p-8 md:p-10 shadow-2xl">
                 <FileUploadEnhanced onProcessComplete={handleProcessComplete} isProcessing={isProcessing} />
               </div>

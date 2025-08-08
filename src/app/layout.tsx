@@ -35,10 +35,8 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
-      <body className={`${inter.className} antialiased min-h-screen`}>
-        <main className="min-h-screen w-full overflow-x-hidden">
-          {children}
-        </main>
+      <body className={`${inter.className} antialiased`}>
+        {children}
       </body>
     </html>
   );
