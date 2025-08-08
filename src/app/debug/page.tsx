@@ -98,14 +98,19 @@ export default function DebugPage() {
               </div>
             )}
             
-            {/* Extraction Stats */}
-            {result.extraction?.pageCount && (
+            {/* Extraction Stats - Always show if we have extraction data */}
+            {result.extraction && (
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-lg font-semibold mb-4">📊 Extraction Statistics</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="bg-gray-50 p-3 rounded">
                     <p className="text-xs text-gray-600">Pages Extracted</p>
-                    <p className="text-2xl font-bold text-blue-600">{result.extraction.pageCount}</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      {result.extraction.pageCount}
+                      {result.extraction.pageCount === 1 && result.extraction.estimatedPages > 1 && (
+                        <span className="text-sm text-gray-500 block">~{result.extraction.estimatedPages} est.</span>
+                      )}
+                    </p>
                   </div>
                   <div className="bg-gray-50 p-3 rounded">
                     <p className="text-xs text-gray-600">Total Characters</p>

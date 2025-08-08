@@ -256,7 +256,8 @@ Upload date: ${new Date().toLocaleDateString()}`)
                     }
                   })
                   
-                  fullText += '\n' // Add extra newline between pages
+                  // Add page marker
+                  fullText += `\n--- Page ${pageIndex + 1} ---\n`
                   processedPages++
                   pagesProcessedBeforeTimeout = processedPages // Update tracker for timeout handler
                   partialText = fullText // Save partial text in case of timeout

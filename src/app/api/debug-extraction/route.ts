@@ -26,13 +26,16 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    // Count pages in extracted text (looking for page markers we might add)
+    // Count pages in extracted text (looking for page markers we add)
     const pageMarkers = extractedText.match(/--- Page \d+ ---/g) || []
     const pageCount = pageMarkers.length || 1
     
     // Try to detect page breaks by looking for common patterns
     const formFeedCount = (extractedText.match(/\f/g) || []).length
     const pageBreakPatterns = (extractedText.match(/Page \d+|PAGE \d+|\d+ of \d+/gi) || [])
+    
+    // Estimate pages if we don't have markers (average PDF has ~3000 chars per page)
+    const estimatedPages = pageMarkers.length > 0 ? pageCount : Math.max(1, Math.ceil(extractedText.length / 3000))
     
     // Get last 1000 chars to see if we got end of document
     const lastChars = extractedText.substring(Math.max(0, extractedText.length - 1000))
@@ -50,6 +53,7 @@ export async function POST(request: NextRequest) {
       extraction: {
         textLength: extractedText.length,
         pageCount: pageCount,
+        estimatedPages: estimatedPages,
         pagesDetected: pageMarkers,
         formFeedCount: formFeedCount,
         pageBreakPatterns: pageBreakPatterns,
