@@ -28,7 +28,8 @@ async function performOCRWithAzureChunk(buffer: Buffer): Promise<string> {
     const cleanEndpoint = endpoint.replace(/\/+$/, '') // Remove trailing slashes
     console.log('Using endpoint:', cleanEndpoint)
     
-    // Azure Computer Vision Read API for better document OCR
+    // Azure Computer Vision Read API
+    // Using v3.2 which should support up to 2000 pages on S1 tier
     const readUrl = `${cleanEndpoint}/vision/v3.2/read/analyze`
     
     console.log('Sending document to Azure Computer Vision...')
@@ -189,17 +190,40 @@ async function performOCRWithAzureChunk(buffer: Buffer): Promise<string> {
   }
 }
 
-// Azure OCR with automatic PDF splitting for 2-page limit
+// Azure OCR - handles both F0 (2-page limit) and S1 (2000-page limit) tiers
 async function performOCRWithAzure(buffer: Buffer): Promise<string> {
-  // Azure Computer Vision v3.2 has a 2-page limit even on S1 tier
-  // We need to split PDFs and process in chunks
+  const endpoint = process.env.AZURE_COMPUTER_VISION_ENDPOINT
+  const apiKey = process.env.AZURE_COMPUTER_VISION_KEY
+  
+  // For S1 tier, we can process the entire PDF at once
+  // The issue before was likely a timeout or API version problem
+  // Let's try direct processing first
   try {
-    console.log('Processing PDF with Azure OCR (2-page chunk processing)...')
-    return await processLargePDFWithAzure(buffer, performOCRWithAzureChunk)
+    console.log('Attempting direct Azure OCR processing (S1 tier - up to 2000 pages)...')
+    const result = await performOCRWithAzureChunk(buffer)
+    
+    // Check if we only got 2 pages when we expected more
+    const pageMatches = result.match(/--- Page \d+ ---/g) || []
+    console.log(`Direct processing returned ${pageMatches.length} pages`)
+    
+    // If we got more than 2 pages, S1 is working correctly
+    if (pageMatches.length > 2) {
+      console.log('S1 tier processing successful - all pages extracted')
+      return result
+    }
+    
+    // If we only got 2 pages, might be F0 tier or an issue
+    // Fall back to chunking
+    if (pageMatches.length <= 2 && buffer.length > 100000) { // If file is large but only 2 pages extracted
+      console.log('Only 2 pages extracted, falling back to chunked processing...')
+      return await processLargePDFWithAzure(buffer, performOCRWithAzureChunk)
+    }
+    
+    return result
   } catch (error) {
-    console.error('Error in chunked processing, falling back to direct:', error)
-    // Fallback to direct processing if splitting fails
-    return await performOCRWithAzureChunk(buffer)
+    console.error('Direct processing failed, using chunked approach:', error)
+    // Fallback to chunked processing
+    return await processLargePDFWithAzure(buffer, performOCRWithAzureChunk)
   }
 }
 
