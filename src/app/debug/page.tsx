@@ -138,15 +138,33 @@ export default function DebugPage() {
                     }`}>
                       {result.extraction.hasOCRMarkers || result.extraction.usedAzureOCR
                         ? '✅ Azure OCR Successfully Processed Document' 
-                        : '⚠️ PDF Extraction Hit 7,562 Character Limit - Azure OCR Processing...'}
+                        : '⚠️ PDF Extraction Limited to 7,562 Characters'}
                     </p>
                     <p className={`text-xs ${
                       result.extraction.hasOCRMarkers || result.extraction.usedAzureOCR ? 'text-green-700' : 'text-amber-700'
                     }`}>
                       {result.extraction.hasOCRMarkers || result.extraction.usedAzureOCR
                         ? `Azure OCR extracted ${result.extraction.textLength.toLocaleString()} characters from ${result.extraction.pageCount || result.extraction.estimatedPages} pages. All content should be complete.`
-                        : 'PDF extraction hit the 7,562 character limit. The system should automatically use Azure OCR for complete extraction. If this persists, check Azure credentials.'}
+                        : 'Your PDF has more content, but extraction stopped at 7,562 characters. To extract the full document:'}
                     </p>
+                    {!result.extraction.hasOCRMarkers && !result.extraction.usedAzureOCR && (
+                      <div className="mt-2 text-xs text-amber-700">
+                        <p className="font-semibold mb-1">Quick Fix (10 minutes):</p>
+                        <ol className="list-decimal list-inside space-y-1 ml-2">
+                          <li>Create free Azure account at <a href="https://azure.microsoft.com/free/" target="_blank" className="underline">azure.microsoft.com/free</a></li>
+                          <li>Create Computer Vision resource (F0 free tier = 5,000 pages/month)</li>
+                          <li>Copy your API key and endpoint from Azure Portal</li>
+                          <li>Add to Vercel: Settings → Environment Variables:
+                            <div className="ml-4 mt-1 font-mono text-[10px] bg-amber-100 p-1 rounded">
+                              AZURE_COMPUTER_VISION_KEY=your-key<br/>
+                              AZURE_COMPUTER_VISION_ENDPOINT=your-endpoint
+                            </div>
+                          </li>
+                          <li>Redeploy from Vercel dashboard</li>
+                        </ol>
+                        <p className="mt-2">See full instructions in <code className="bg-amber-100 px-1 rounded">setup-azure-vision.md</code></p>
+                      </div>
+                    )}
                   </div>
                 )}
                 
