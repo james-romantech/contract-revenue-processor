@@ -66,10 +66,8 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
           file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
           file.type === 'application/msword') {
         setSelectedFile(file)
-        // Don't auto-process PDFs, let user choose processing method
-        if (file.type !== 'application/pdf') {
-          await processFile(file)
-        }
+        // Always auto-process all files now
+        await processFile(file)
       } else {
         setError('Please upload a PDF or Word document')
       }
@@ -80,10 +78,8 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0]
       setSelectedFile(file)
-      // Don't auto-process PDFs, let user choose processing method
-      if (file.type !== 'application/pdf') {
-        await processFile(file)
-      }
+      // Always auto-process all files now
+      await processFile(file)
     }
   }
 
