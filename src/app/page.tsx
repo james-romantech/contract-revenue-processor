@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { FileUploadEnhanced } from '@/components/file-upload-enhanced'
 import { ContractEditor } from '@/components/contract-editor'
 import { RevenueCalculator } from '@/components/revenue-calculator'
+import { ExportButtons } from '@/components/export-buttons'
+import type { RevenueAllocation } from '@/lib/revenue-calculator'
 
 interface ContractData {
   id: string
@@ -47,6 +49,7 @@ export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [contractData, setContractData] = useState<ContractData | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [revenueAllocations, setRevenueAllocations] = useState<RevenueAllocation[]>([])
 
   const handleProcessComplete = async (extractedText: string, file: File) => {
     console.log('=== handleProcessComplete called ===')
@@ -148,7 +151,14 @@ export default function Home() {
         {contractData && (
           <div className="mt-8 space-y-6">
             <ContractEditor contractData={contractData} />
-            <RevenueCalculator contractData={contractData} />
+            <RevenueCalculator 
+              contractData={contractData} 
+              onAllocationsChange={setRevenueAllocations}
+            />
+            <ExportButtons 
+              contractData={contractData} 
+              revenueAllocations={revenueAllocations}
+            />
           </div>
         )}
       </div>

@@ -21,9 +21,10 @@ interface RevenueCalculatorProps {
       }>
     }
   }
+  onAllocationsChange?: (allocations: RevenueAllocation[]) => void
 }
 
-export function RevenueCalculator({ contractData }: RevenueCalculatorProps) {
+export function RevenueCalculator({ contractData, onAllocationsChange }: RevenueCalculatorProps) {
   const [allocationType, setAllocationType] = useState<'straight-line' | 'milestone-based' | 'percentage-complete' | 'billed-basis'>('straight-line')
   const [revenueAllocations, setRevenueAllocations] = useState<RevenueAllocation[]>([])
   const [actualRevenue, setActualRevenue] = useState(0)
@@ -99,6 +100,12 @@ export function RevenueCalculator({ contractData }: RevenueCalculatorProps) {
       calculateRevenue()
     }
   }, [contractData, allocationType, actualRevenue])
+  
+  useEffect(() => {
+    if (onAllocationsChange) {
+      onAllocationsChange(revenueAllocations)
+    }
+  }, [revenueAllocations, onAllocationsChange])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
