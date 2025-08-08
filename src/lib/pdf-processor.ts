@@ -1,7 +1,6 @@
 import mammoth from 'mammoth'
-import { processLargePDFWithAzure } from './pdf-splitter'
 
-// OCR function for scanned PDFs using Azure Computer Vision (single chunk)
+// OCR function for scanned PDFs using Azure Computer Vision
 async function performOCRWithAzureChunk(buffer: Buffer): Promise<string> {
   try {
     console.log('Starting OCR with Azure Computer Vision...')
@@ -190,24 +189,16 @@ async function performOCRWithAzureChunk(buffer: Buffer): Promise<string> {
   }
 }
 
-// Azure OCR - handles both F0 (2-page limit) and S1 (2000-page limit) tiers
+// Azure OCR - S1 tier processes all pages directly, no chunking needed
 async function performOCRWithAzure(buffer: Buffer): Promise<string> {
   try {
-    console.log('Processing with Azure OCR...')
+    console.log('Processing with Azure OCR (S1 tier - full document)...')
+    // Direct processing - S1 tier handles up to 2000 pages
     const result = await performOCRWithAzureChunk(buffer)
     
-    // Check how many pages were processed
     const pageMatches = result.match(/--- Page \d+ ---/g) || []
-    console.log(`Azure OCR processed ${pageMatches.length} pages`)
+    console.log(`Azure OCR successfully processed ${pageMatches.length} pages`)
     
-    // S1 tier processes all pages, F0 tier only processes 2
-    // If we only got 2 pages but the buffer is large, user might be on F0 tier
-    if (pageMatches.length === 2 && buffer.length > 200000) { 
-      console.log('Only 2 pages extracted from large file - possible F0 tier, using chunked processing...')
-      return await processLargePDFWithAzure(buffer, performOCRWithAzureChunk)
-    }
-    
-    // S1 tier or small document - return direct result
     return result
   } catch (error) {
     console.error('Azure OCR error:', error)
