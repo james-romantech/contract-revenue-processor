@@ -182,7 +182,7 @@ export async function extractTextFromFile(file: File): Promise<string> {
           const mergedText = typeof mergedResult.text === 'string' ? mergedResult.text : ''
           console.log(`Merged extraction: ${mergedResult.totalPages} pages, ${mergedText.length} characters`)
           
-          if (mergedText && mergedText.length > 0) {
+          if (mergedText && mergedText.trim().length > 0) {
             // Add page count info even if we can't separate pages
             return `[Extracted from ${mergedResult.totalPages} pages]\n\n${mergedText}`
           }
