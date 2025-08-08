@@ -1,7 +1,8 @@
 import mammoth from 'mammoth'
+import { processLargePDFWithAzure } from './pdf-splitter'
 
 // OCR function for scanned PDFs using Azure Computer Vision
-async function performOCRWithAzure(buffer: Buffer): Promise<string> {
+async function performOCRWithAzureChunk(buffer: Buffer): Promise<string> {
   try {
     console.log('Starting OCR with Azure Computer Vision...')
     console.log('Buffer size:', buffer.length, 'bytes')
@@ -185,6 +186,18 @@ async function performOCRWithAzure(buffer: Buffer): Promise<string> {
       throw new Error(`Azure OCR Error: ${error.message}`)
     }
     throw error
+  }
+}
+
+// Wrapper function that handles PDF splitting for Azure's 2-page limit
+async function performOCRWithAzure(buffer: Buffer): Promise<string> {
+  try {
+    // Use the splitting function to process PDFs larger than 2 pages
+    return await processLargePDFWithAzure(buffer, performOCRWithAzureChunk)
+  } catch (error) {
+    console.error('Error in performOCRWithAzure wrapper:', error)
+    // Fallback to direct processing if splitting fails
+    return await performOCRWithAzureChunk(buffer)
   }
 }
 
