@@ -2,7 +2,6 @@
 
 import { useState, useCallback } from 'react'
 import { Upload, FileText, X, AlertCircle, CheckCircle } from 'lucide-react'
-import { extractTextFromPDFClient } from '@/lib/client-pdf-processor'
 
 interface FileUploadEnhancedProps {
   onProcessComplete: (extractedText: string, file: File) => void
@@ -15,58 +14,28 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingStatus, setProcessingStatus] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
-  const [useServerProcessing, setUseServerProcessing] = useState(false)
 
   const processFile = async (file: File) => {
     setError(null)
     setIsProcessing(true)
     
     try {
-      if (file.type === 'application/pdf' && !useServerProcessing) {
-        // Try client-side processing first
-        try {
-          setProcessingStatus('Processing PDF in browser (no timeout limits)...')
-          const extractedText = await extractTextFromPDFClient(file)
-          
-          // Check if we got meaningful text
-          const pageCount = (extractedText.match(/--- Page \d+ ---/g) || []).length
-          console.log('Client extraction complete:', {
-            textLength: extractedText.length,
-            pageCount: pageCount,
-            preview: extractedText.substring(0, 500),
-            lastChars: extractedText.substring(extractedText.length - 500)
-          })
-          
-          // If we didn't get all pages or text is too short, warn user
-          if (extractedText.length < 1000 || pageCount < 2) {
-            setError('PDF extraction may be incomplete. Try server-side processing if issues persist.')
-          }
-          
-          setProcessingStatus(`Extracted ${extractedText.length} characters from ${pageCount} pages`)
-          onProcessComplete(extractedText, file)
-        } catch (clientError) {
-          console.error('Client-side processing failed, falling back to server:', clientError)
-          setProcessingStatus('Client processing failed, using server...')
-          // Fall back to server processing
-          onProcessComplete('', file)
-        }
-      } else if (file.type === 'application/pdf' && useServerProcessing) {
-        // Force server-side processing for PDFs
-        setProcessingStatus('Processing PDF on server (may take up to 60 seconds)...')
-        onProcessComplete('', file)
+      // Always use server-side processing for all file types
+      if (file.type === 'application/pdf') {
+        setProcessingStatus('Processing PDF on server...')
       } else if (
         file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
         file.type === 'application/msword'
       ) {
-        // Word docs still need server processing (but they're fast)
-        setProcessingStatus('Processing Word document...')
-        // For Word docs, we'll pass the file directly
-        onProcessComplete('', file)
+        setProcessingStatus('Processing Word document on server...')
       } else {
-        throw new Error('Unsupported file type')
+        throw new Error('Unsupported file type. Please upload a PDF or Word document.')
       }
       
-      setProcessingStatus('Processing complete!')
+      // Always pass empty string for extractedText to force server processing
+      onProcessComplete('', file)
+      setProcessingStatus('Upload complete - processing on server...')
+      
     } catch (err) {
       console.error('File processing error:', err)
       setError(err instanceof Error ? err.message : 'Failed to process file')
@@ -178,7 +147,7 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
               <p className="text-xs text-gray-500 mt-1">or click to select</p>
               <p className="text-xs text-gray-400 mt-2">Supports PDF and Word documents</p>
               <p className="text-xs text-green-600 mt-1 font-semibold">
-                ✨ PDFs now process client-side (no timeout!)
+                ✨ AI-powered extraction with OCR support
               </p>
             </>
           )}
@@ -204,54 +173,12 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
           </div>
         </div>
       )}
-
-      {selectedFile && selectedFile.type === 'application/pdf' && (
-        <div className="mt-4 space-y-3">
-          <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <input
-              type="checkbox"
-              id="server-processing"
-              checked={useServerProcessing}
-              onChange={(e) => {
-                setUseServerProcessing(e.target.checked)
-                // Re-process the file if already selected
-                if (selectedFile && !isProcessing) {
-                  processFile(selectedFile)
-                }
-              }}
-              className="rounded border-gray-300"
-              disabled={isProcessing}
-            />
-            <div className="flex-1">
-              <label htmlFor="server-processing" className="text-sm font-medium text-gray-700 cursor-pointer">
-                Use server-side processing
-              </label>
-              <p className="text-xs text-gray-600 mt-1">
-                {useServerProcessing 
-                  ? 'PDF will process on server (55-second timeout, handles complex PDFs better)'
-                  : 'PDF will process in browser (no timeout, but may miss pages in complex PDFs)'}
-              </p>
-            </div>
-          </div>
-          
-          {!isProcessing && (
-            <button
-              onClick={() => processFile(selectedFile)}
-              className="w-full px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              {processingStatus 
-                ? `Re-process PDF with ${useServerProcessing ? 'Server' : 'Client'} Processing`
-                : `Process PDF with ${useServerProcessing ? 'Server' : 'Client'} Processing`}
-            </button>
-          )}
-          
-          {processingStatus && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-xs text-blue-800 font-medium">
-                {processingStatus}
-              </p>
-            </div>
-          )}
+      
+      {processingStatus && (
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-xs text-blue-800 font-medium">
+            {processingStatus}
+          </p>
         </div>
       )}
     </div>

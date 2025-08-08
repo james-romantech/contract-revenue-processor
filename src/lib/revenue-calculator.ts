@@ -1,4 +1,4 @@
-import { addMonths, endOfMonth, startOfMonth, differenceInMonths } from 'date-fns'
+import { addMonths, endOfMonth, startOfMonth, differenceInMonths, parseISO, format } from 'date-fns'
 
 export interface RevenueAllocation {
   amount: number
@@ -75,23 +75,22 @@ function calculateMilestoneRevenue(
   milestones: Array<{ name: string; amount: number; dueDate: Date }>
 ): RevenueAllocation[] {
   return milestones.map((milestone, index) => {
-    // Ensure we're working with a proper date at noon to avoid timezone issues
-    const dateAtNoon = new Date(milestone.dueDate)
-    dateAtNoon.setHours(12, 0, 0, 0)
-    const endDate = endOfMonth(dateAtNoon)
+    // Use the same date handling as straight-line
+    const recognitionDate = endOfMonth(milestone.dueDate)
     
     if (index === 0) {
       console.log('Milestone first date:', {
-        originalDueDate: milestone.dueDate.toISOString(),
-        dateAtNoon: dateAtNoon.toISOString(),
-        endOfMonth: endDate.toISOString(),
-        localString: endDate.toLocaleDateString()
+        originalDueDate: milestone.dueDate,
+        originalISO: milestone.dueDate instanceof Date ? milestone.dueDate.toISOString() : 'not a date',
+        endOfMonth: recognitionDate.toISOString(),
+        formatted: format(recognitionDate, 'yyyy-MM-dd'),
+        localString: recognitionDate.toLocaleDateString()
       })
     }
     
     return {
       amount: milestone.amount,
-      recognitionDate: endDate,
+      recognitionDate: recognitionDate,
       type: 'milestone' as const,
       description: `Milestone: ${milestone.name}`
     }
@@ -131,13 +130,12 @@ function calculateBilledBasisRevenue(
   milestones: Array<{ name: string; amount: number; dueDate: Date }>
 ): RevenueAllocation[] {
   return milestones.map((milestone, index) => {
-    // Ensure we're working with a proper date at noon to avoid timezone issues
-    const dateAtNoon = new Date(milestone.dueDate)
-    dateAtNoon.setHours(12, 0, 0, 0)
+    // Use the same date handling as straight-line
+    const recognitionDate = endOfMonth(milestone.dueDate)
     
     return {
       amount: milestone.amount,
-      recognitionDate: endOfMonth(dateAtNoon),
+      recognitionDate: recognitionDate,
       type: 'billed' as const,
       description: `Billed amount ${index + 1}: ${milestone.name}`
     }
