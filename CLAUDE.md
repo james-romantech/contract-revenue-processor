@@ -575,10 +575,53 @@ After extensive debugging, discovered Azure OCR was actually working perfectly (
 ✅ **Azure OCR integrated** - Automatically triggered when limits detected
 ✅ **Comprehensive fallback chain** - unpdf → Azure OCR → pdf2json
 
+## Latest Session Updates (Current Session)
+
+### Issues Fixed Today:
+
+1. **Confidence Display Issue (Fixed)**
+   - Problem: Confidence showing as 9500.0% instead of 95.0%
+   - Solution: Added logic to detect values > 100 and divide by 100 to normalize
+
+2. **Date Inconsistency Issue (Fixed)**
+   - Problem: Milestone-Based and Billed-Basis dates were 1 day off from Straight-line
+   - Solution: Ensured all revenue methods use endOfMonth() consistently in revenue-calculator.ts
+
+3. **File Upload Breaking (Fixed)**
+   - Problem: After removing client-side processing, PDFs wouldn't auto-process
+   - Solution: Ensured processFile() is called for all file types in file-upload-enhanced.tsx
+
+4. **Export Functionality Added**
+   - Implemented CSV export with papaparse
+   - Implemented Excel export with xlsx library
+   - Created export-buttons.tsx component
+   - Fixed toFixed() errors by ensuring all values are numbers before formatting
+
+5. **Excel Export Enhancements**
+   - Restructured to have two tabs: "Revenue Schedule" and "Billing Schedule"
+   - Contract info repeated on each row for easier filtering
+   - Date columns now use actual Excel date format instead of text
+   - Proper currency formatting with $ symbols
+
+6. **Processing Status Spinner Issue (Fixed)**
+   - Problem: "Upload complete - processing on server..." spinner would show indefinitely after successful upload
+   - Solution: Added useEffect hook to monitor externalProcessing prop and clear local states when parent finishes
+
+### Retry Logic for AI Extraction
+- Added retry logic with progressive delays (2s, 4s) for cold start issues
+- Helps with intermittent extraction failures
+- Maximum of 2 retries before giving up
+
+### Export Data Structure
+- Revenue Schedule tab includes: File Name, Client Name, Contract Value, Contract Description, Revenue Description, Amount, Recognition Date
+- Billing Schedule tab includes: File Name, Client Name, Contract Value, Contract Description, Milestone Name, Amount, Due Date
+- Both tabs have proper Excel date formatting and currency formatting
+
 ## Future Enhancements
-- Export to Excel/CSV
 - Multi-contract dashboard
 - Automated revenue journal entries
 - Contract comparison tools
 - Email notifications for milestones
 - API for integration with accounting systems
+- Batch processing of multiple contracts
+- Historical contract analysis and reporting

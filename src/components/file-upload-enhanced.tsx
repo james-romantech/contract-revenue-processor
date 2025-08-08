@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Upload, FileText, X, AlertCircle, CheckCircle } from 'lucide-react'
 
 interface FileUploadEnhancedProps {
@@ -14,6 +14,14 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingStatus, setProcessingStatus] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
+
+  // Clear processing states when external processing completes
+  useEffect(() => {
+    if (!externalProcessing && isProcessing) {
+      setIsProcessing(false)
+      setProcessingStatus('')
+    }
+  }, [externalProcessing])
 
   const processFile = async (file: File) => {
     console.log('=== processFile called ===')
@@ -41,6 +49,8 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
       console.log('Calling onProcessComplete with empty string and file')
       onProcessComplete('', file)
       setProcessingStatus('Upload complete - processing on server...')
+      // The parent component will set externalProcessing to false when done,
+      // which will trigger our useEffect to clear the local states
       
     } catch (err) {
       console.error('File processing error:', err)
@@ -48,7 +58,6 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
       setProcessingStatus('')
       setIsProcessing(false)
     }
-    // Don't set isProcessing to false here - let the parent component handle it
   }
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -131,7 +140,7 @@ export function FileUploadEnhanced({ onProcessComplete, isProcessing: externalPr
               </p>
               {processingStatus && (
                 <div className="mt-4 flex items-center justify-center gap-2">
-                  {isProcessing ? (
+                  {(isProcessing || externalProcessing) ? (
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500" />
                   ) : (
                     <CheckCircle className="h-4 w-4 text-green-500" />
